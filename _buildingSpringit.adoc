@@ -1,0 +1,236 @@
+:imagesdir: images/
+
+This section of the documentation is going to contain details about each section of the course as we begin to build out our Reddit clone. In
+each of these sections I will provide information, code or even links to topics that we discuss as we start to develop our application. 
+
+=== Spring MVC: Model
+
+In the project overview section we discussed the domain model. For reference I have included our basic model diagram
+below. Please remember that this is probably going to change as we begin to build out our application but this should
+give us what we need to get started.
+
+image::domain_model.png[]
+
+==== Spring Data
+Now that we know what we need to build, how are we going to do it? We could write a whole bunch of code for manually
+fetching, inserting, updated and deleting data but that sounds very tedious. Lucky for us we don't have to and in
+the Spring world we have a wonderful project called Spring Data that will do a lot of the heavy lifting for us.
+
+https://projects.spring.io/spring-data-jpa/[Spring Data JPA]
+
+Implementing a data access layer of an application has been cumbersome for quite a while. Too much boilerplate code has to be written to execute simple queries as well as perform pagination, and auditing. Spring Data JPA aims to significantly improve the implementation of data access layers by reducing the effort to the amount that’s actually needed. As a developer you write your repository interfaces, including custom finder methods, and Spring will provide the implementation automatically.
+
+*Spring Data JPA Dependencies*
+
+You can select Spring Data JPA as one of the options using the Spring Initializr or by adding the following dependency to your pom.xml
+
+```xml
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-data-jpa</artifactId>
+</dependency>
+```
+
+---
+
+==== Entities & Repositories
+
+.Link Entity
+```java
+@Entity
+public class Link {
+
+    @Id @GeneratedValue
+    private Integer id;
+    private String title;
+    private String url;
+
+    public Link() {}
+
+    public Link(String title, String url) {
+        this.setTitle(title);
+        this.setUrl(url);
+    }
+```
+
+.Comment Entity
+```java
+@Entity
+public class Comment {
+
+    @Id @GeneratedValue
+    private Integer id;
+    private String body;
+    private Link link;
+
+}
+```
+.Vote Stub (We will come back to this later)
+```java
+public class Vote {
+
+    @Id @GeneratedValue
+    private Integer id;
+    private User user;
+    private Link link;
+    private int vote;
+
+}
+```
+
+==== Auditing
+
+Spring Data provides sophisticated support to transparently keep track of who created or changed an entity and when the change happened. To benefit from that functionality, you have to equip your entity classes with auditing metadata that can be defined either using annotations or by implementing an interface.
+
+https://docs.spring.io/spring-data/jpa/docs/current/reference/html/#auditing[Spring Data JPA Auditing]
+
+.Auditing Annotations
+```java
+@CreatedDate
+private LocalDateTime createdDate;
+
+@LastModifiedDate
+private LocalDateTime lastUpdatedDate;
+
+@CreatedBy
+private String createdBy;
+
+@LastModifiedBy
+private String modifiedBy;
+```
+
+The final step is to enable JPA Auditing and to do so we simply need to add the following annotation to a configuration class.
+
+.How to Enable JPA Auditing
+```java
+@SpringBootApplication
+@EnableJpaAuditing
+public class SpringitApplication {
+
+	private static final Logger log = LoggerFactory.getLogger(SpringitApplication.class);
+
+	public static void main(String[] args) {
+		SpringApplication.run(SpringitApplication.class, args);
+	}
+
+}
+```
+
+This is the easy approach but at some point we will to log the user that created and modified a record. To do so we
+can simply create a configuration class and make our Enable Jpa Auditing aware of the current logged in user.
+
+.Auditor Aware Configuration
+```java
+@Configuration
+@EnableJpaAuditing(auditorAwareRef = "auditorAware")
+public class JpaConfig {
+    @Bean
+    public AuditorAware<String> auditorAware() {
+        return new AuditorAwareImpl();
+    }
+
+}
+```
+
+.Auditor Aware Implementation
+```java
+public class AuditorAwareImpl implements AuditorAware<String> {
+    @Override
+    public Optional<String> getCurrentAuditor() {
+        return Optional.of(((User) SecurityContextHolder.getContext().getAuthentication().getPrincipal()).getUsername());
+    }
+}
+```
+If you have a bunch of classes that are going to be auditable you could take this route. Create an abastract class
+called Auditable and make it a mapped super class. When your class needs to have these auditable features simply
+extend this class.
+
+.Auditable Mapped Super Class
+```java
+@MappedSuperclass
+@EntityListeners(AuditingEntityListener.class)
+public abstract class Auditable<U> {
+
+    @CreatedBy
+    private U createdBy;
+
+    @CreatedDate
+    @Temporal(TIMESTAMP)
+    private LocalDateTime creationDate;
+
+    @LastModifiedBy
+    private U lastModifiedBy;
+
+    @LastModifiedDate
+    @Temporal(TIMESTAMP)
+    private LocalDateTime lastModifiedDate;
+
+    public U getCreatedBy() {
+        return createdBy;
+    }
+
+    public void setCreatedBy(U createdBy) {
+        this.createdBy = createdBy;
+    }
+
+    public LocalDateTime getCreationDate() {
+        return creationDate;
+    }
+
+    public void setCreationDate(LocalDateTime creationDate) {
+        this.creationDate = creationDate;
+    }
+
+    public U getLastModifiedBy() {
+        return lastModifiedBy;
+    }
+
+    public void setLastModifiedBy(U lastModifiedBy) {
+        this.lastModifiedBy = lastModifiedBy;
+    }
+
+    public LocalDateTime getLastModifiedDate() {
+        return lastModifiedDate;
+    }
+
+    public void setLastModifiedDate(LocalDateTime lastModifiedDate) {
+        this.lastModifiedDate = lastModifiedDate;
+    }
+}
+```
+
+==== Project Lombok
+
+Project Lombok is a java library that automatically plugs into your editor and build tools, spicing up your java.
+Never write another getter or equals method again.
+
+https://projectlombok.org/[Project Lombok]
+
+.Lombok Dependency
+```xml
+<dependency>
+    <groupId>org.projectlombok</groupId>
+    <artifactId>lombok</artifactId>
+    <optional>true</optional>
+</dependency>
+```
+The Lombok website has installation instructions for whatever IDE you are using. It isn't enough to just install
+the dependency, you must follow the instructions for your IDE.
+
+image::lombok_install.png[]
+
+https://projectlombok.org/setup/intellij[IntelliJ Installation]
+
+=== Database Layer
+
+=== Spring MVC: Controller
+
+=== Spring Security
+
+=== Spring MVC: The Service Layer
+
+=== Spring MVC: The View Layer
+
+=== Testing
+
+=== Production

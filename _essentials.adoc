@@ -1,0 +1,18 @@
+=== Actuator
+
+.Actuator Dependency
+```xml
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-actuator</artifactId>
+</dependency>
+```
+
+.Actuator Properties
+```properties
+# open up all of the endpoints for demo purposes
+# only expose certain endpoints ["health","info"]
+management.endpoints.web.expose=*
+management.endpoints.web.exclude=env
+management.endpoint.health.show-details=true
+```
