@@ -1,0 +1,4 @@
+We need to talk about hibernate properties 
+create-drop
+logging 
+hibernate logging level to DEBUG

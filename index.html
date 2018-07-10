@@ -1949,7 +1949,21 @@ management.endpoint.health.show-details=true</code></pre>
 <div class="sectionbody">
 <div class="paragraph">
 <p>This section of the documentation is going to contain details about each section of the course as we begin to build out our Reddit clone. In
-each of these sections I will provide information, code or even links to topics that we discuss as we start to develop our application.</p>
+each of these sections I will provide information, code or even links to topics that we discuss as we start to develop our application. Each
+section underneath Building Springit represents a section in the course from here on out. So if you&#8217;re working on the Service Layer section,
+click on the Service Layer sub section here to find all of the accompanying documentation.</p>
+</div>
+<div class="admonitionblock tip">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-tip" title="Tip"></i>
+</td>
+<td class="content">
+MVC stands for Model View Controller
+</td>
+</tr>
+</table>
 </div>
 <div class="sect2">
 <h3 id="_spring_mvc_model">Spring MVC: Model</h3>
@@ -1963,18 +1977,84 @@ give us what we need to get started.</p>
 <img src="images/domain_model.png" alt="domain model">
 </div>
 </div>
+<div class="paragraph">
+<p>Now that we know what we need to build, how are we going to build it?</p>
+</div>
+<div class="sect3">
+<h4 id="_jpa">JPA</h4>
+<div class="paragraph">
+<p>The Java Persistence API (JPA) is a Java application programming interface specification that describes the management of relational data in applications using Java Platform, Standard Edition and Java Platform, Enterprise Edition.</p>
+</div>
+<div class="paragraph">
+<p>Persistence in this context covers three areas:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>The API itself, defined in the <a href="https://javaee.github.io/javaee-spec/javadocs/javax/persistence/package-summary.html">javax.persistence</a> package</p>
+</li>
+<li>
+<p>The Java Persistence Query Language (JPQL)</p>
+</li>
+<li>
+<p>object/relational metadata</p>
+</li>
+</ul>
+</div>
+<div class="admonitionblock tip">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-tip" title="Tip"></i>
+</td>
+<td class="content">
+Class &#8658; Database Table<br>
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>JPA is just the specification and by itself isn&#8217;t all that usefull. What you need is a JPA provider that implements the specification. A couple of the most popular implementations are:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Hibernate</p>
+</li>
+<li>
+<p>Eclipse Link</p>
+</li>
+</ul>
+</div>
+</div>
 <div class="sect3">
 <h4 id="_spring_data">Spring Data</h4>
 <div class="paragraph">
-<p>Now that we know what we need to build, how are we going to do it? We could write a whole bunch of code for manually
-fetching, inserting, updated and deleting data but that sounds very tedious. Lucky for us we don&#8217;t have to and in
-the Spring world we have a wonderful project called Spring Data that will do a lot of the heavy lifting for us.</p>
+<p>Spring Data’s mission is to provide a familiar and consistent, Spring-based programming model for data access while still retaining the special traits of the underlying data store.</p>
 </div>
+<div class="paragraph">
+<p><a href="https://projects.spring.io/spring-data/">Spring Data</a></p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_spring_data_jpa">Spring Data JPA</h4>
 <div class="paragraph">
 <p><a href="https://projects.spring.io/spring-data-jpa/">Spring Data JPA</a></p>
 </div>
 <div class="paragraph">
 <p>Implementing a data access layer of an application has been cumbersome for quite a while. Too much boilerplate code has to be written to execute simple queries as well as perform pagination, and auditing. Spring Data JPA aims to significantly improve the implementation of data access layers by reducing the effort to the amount that’s actually needed. As a developer you write your repository interfaces, including custom finder methods, and Spring will provide the implementation automatically.</p>
+</div>
+<div class="admonitionblock tip">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-tip" title="Tip"></i>
+</td>
+<td class="content">
+Spring Data JPA uses Hibernate under the hood. Through a Spring Boot Starter and Auto Configuration you don&#8217;t have to do much to get Hibernate setup. This is huge because this is one of the things that deters people from starting with Hibernate in the first place.
+</td>
+</tr>
+</table>
 </div>
 <div class="paragraph">
 <p><strong>Spring Data JPA Dependencies</strong></p>
@@ -1990,39 +2070,58 @@ the Spring world we have a wonderful project called Spring Data that will do a l
 &lt;/dependency&gt;</code></pre>
 </div>
 </div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+What dependencies does the spring-boot-starter-data-jpa include?
+</td>
+</tr>
+</table>
+</div>
 <hr>
 </div>
 <div class="sect3">
-<h4 id="_entities_repositories">Entities &amp; Repositories</h4>
+<h4 id="_entities">Entities</h4>
 <div class="listingblock">
 <div class="title">Link Entity</div>
 <div class="content">
-<pre class="highlight"><code class="language-java" data-lang="java">@Entity
+<pre class="highlight"><code class="language-java" data-lang="java">import javax.persistence.Entity;
+import javax.persistence.GeneratedValue;
+import javax.persistence.Id;
+
+@Entity
 public class Link {
 
-    @Id @GeneratedValue
-    private Integer id;
+    @Id
+    @GeneratedValue
+    private Long id;
     private String title;
     private String url;
 
-    public Link() {}
-
-    public Link(String title, String url) {
-        this.setTitle(title);
-        this.setUrl(url);
-    }</code></pre>
+    // comments
+}</code></pre>
 </div>
 </div>
 <div class="listingblock">
 <div class="title">Comment Entity</div>
 <div class="content">
-<pre class="highlight"><code class="language-java" data-lang="java">@Entity
+<pre class="highlight"><code class="language-java" data-lang="java">import javax.persistence.Entity;
+import javax.persistence.GeneratedValue;
+import javax.persistence.Id;
+
+@Entity
 public class Comment {
 
-    @Id @GeneratedValue
-    private Integer id;
+    @Id
+    @GeneratedValue
+    private Long id;
     private String body;
-    private Link link;
+
+    //private Link link;
 
 }</code></pre>
 </div>
@@ -2033,7 +2132,7 @@ public class Comment {
 <pre class="highlight"><code class="language-java" data-lang="java">public class Vote {
 
     @Id @GeneratedValue
-    private Integer id;
+    private Long id;
     private User user;
     private Link link;
     private int vote;
@@ -2041,6 +2140,126 @@ public class Comment {
 }</code></pre>
 </div>
 </div>
+<div class="paragraph">
+<p><strong>Common Entity Annotations</strong></p>
+</div>
+<div class="paragraph">
+<p>When working with Entities these are some of the more common annotations you will be using to provide metadata about your objects.</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><a href="https://javaee.github.io/javaee-spec/javadocs/javax/persistence/Entity.html">Entity</a></p>
+</li>
+<li>
+<p><a href="https://javaee.github.io/javaee-spec/javadocs/javax/persistence/Table.html">@Table</a></p>
+</li>
+<li>
+<p><a href="https://javaee.github.io/javaee-spec/javadocs/javax/persistence/Id.html">@Id</a></p>
+</li>
+<li>
+<p><a href="https://javaee.github.io/javaee-spec/javadocs/javax/persistence/GeneratedValue.html">@GeneratedValue</a></p>
+</li>
+<li>
+<p><a href="https://javaee.github.io/javaee-spec/javadocs/javax/persistence/Column.html">@Column</a></p>
+</li>
+<li>
+<p><a href="https://javaee.github.io/javaee-spec/javadocs/javax/persistence/Transient.html">@Transient</a></p>
+</li>
+<li>
+<p><a href="https://javaee.github.io/javaee-spec/javadocs/javax/persistence/OrderBy.html">@OrderBy</a></p>
+</li>
+<li>
+<p><a href="https://javaee.github.io/javaee-spec/javadocs/javax/persistence/Version.html">@Version</a></p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_repositories_2">Repositories</h4>
+<div class="paragraph">
+<p>The central interface in the Spring Data repository abstraction is Repository. It takes the domain class to manage as well as the ID type of the domain class as type arguments. This interface acts primarily as a marker interface to capture the types to work with and to help you to discover interfaces that extend this one.</p>
+</div>
+<div class="listingblock">
+<div class="title">LinkRepository.java</div>
+<div class="content">
+<pre class="highlight"><code class="language-java" data-lang="java">import com.vega.springit.domain.Link;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+public interface LinkRepository extends JpaRepository&lt;Link,Long&gt; {
+
+}</code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="title">CommentRepository.java</div>
+<div class="content">
+<pre class="highlight"><code class="language-java" data-lang="java">public interface CommentRepository extends JpaRepository&lt;Comment,Long&gt; {
+
+}</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>JpaRepository</p>
+</li>
+<li>
+<p>CrudRepository</p>
+</li>
+<li>
+<p>PagingAndSortingRepository</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_entity_relationships_mappings">Entity Relationships (Mappings)</h4>
+<div class="paragraph">
+<p>Mappings are a key feature of Hibernate and JPA. They allow us to model the relationships between two tables in your domain objects as properties.</p>
+</div>
+<div class="paragraph">
+<p>JPA Mapping Annotations</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><a href="https://javaee.github.io/javaee-spec/javadocs/javax/persistence/OneToOne.html">OneToOne Annotation</a></p>
+</li>
+<li>
+<p><a href="https://javaee.github.io/javaee-spec/javadocs/javax/persistence/OneToMany.html">OneToMany Annotation</a></p>
+</li>
+<li>
+<p><a href="https://javaee.github.io/javaee-spec/javadocs/javax/persistence/ManyToOne.html">ManyToOne Annotation</a></p>
+</li>
+<li>
+<p><a href="https://javaee.github.io/javaee-spec/javadocs/javax/persistence/ManyToMany.html">ManyToMany Annotation</a></p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p><strong>Thoughts on Java</strong></p>
+</div>
+<div class="paragraph">
+<p>This is a really great article from Thorben Janssen on asoociation mappings in Hibernate. If you&#8217;re going to start working with JPA and Hibernate his website <a href="https://www.thoughts-on-java.org">Thoughts on Java</a> is a must bookmark.</p>
+</div>
+<div class="paragraph">
+<p><a href="https://www.thoughts-on-java.org/ultimate-guide-association-mappings-jpa-hibernate/">Ultimate Guide – Association Mappings with JPA and Hibernate</a></p>
+</div>
+<div class="paragraph">
+<p>When we create a bi-directional mapping we have a decision to make. What type should the collection be, a list or a set. This is something to think about and I have included another great article from Thorben on the subject.</p>
+</div>
+<div class="paragraph">
+<p><a href="https://www.thoughts-on-java.org/association-mappings-bag-list-set/">Bag vs Set vs List</a></p>
+</div>
+<div class="paragraph">
+<p>Hibernate Tips Book on Amazon</p>
+</div>
+<div class="paragraph">
+<p><a href="https://www.amazon.com/Hibernate-Tips-solutions-common-problems-ebook/dp/B06XXGYZHS/ref=sr_1_1?tag=toj04-20" class="bare">https://www.amazon.com/Hibernate-Tips-solutions-common-problems-ebook/dp/B06XXGYZHS/ref=sr_1_1?tag=toj04-20</a></p>
+</div>
+<hr>
 </div>
 <div class="sect3">
 <h4 id="_auditing">Auditing</h4>
@@ -2116,35 +2335,42 @@ public class JpaConfig {
 </div>
 <div class="paragraph">
 <p>If you have a bunch of classes that are going to be auditable you could take this route. Create an abastract class
-called Auditable and make it a mapped super class. When your class needs to have these auditable features simply
-extend this class.</p>
+called Auditable and make it a <a href="https://javaee.github.io/javaee-spec/javadocs/javax/persistence/MappedSuperclass.html">mapped super class</a>. When your class needs to have these auditable features simply extend this class.</p>
 </div>
 <div class="listingblock">
 <div class="title">Auditable Mapped Super Class</div>
 <div class="content">
-<pre class="highlight"><code class="language-java" data-lang="java">@MappedSuperclass
+<pre class="highlight"><code class="language-java" data-lang="java">import org.springframework.data.annotation.CreatedBy;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.LastModifiedBy;
+import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
+
+import javax.persistence.EntityListeners;
+import javax.persistence.MappedSuperclass;
+import java.time.LocalDateTime;
+
+@MappedSuperclass
 @EntityListeners(AuditingEntityListener.class)
-public abstract class Auditable&lt;U&gt; {
+public abstract class Auditable {
 
     @CreatedBy
-    private U createdBy;
+    private String createdBy;
 
     @CreatedDate
-    @Temporal(TIMESTAMP)
     private LocalDateTime creationDate;
 
     @LastModifiedBy
-    private U lastModifiedBy;
+    private String lastModifiedBy;
 
     @LastModifiedDate
-    @Temporal(TIMESTAMP)
     private LocalDateTime lastModifiedDate;
 
-    public U getCreatedBy() {
+    public String getCreatedBy() {
         return createdBy;
     }
 
-    public void setCreatedBy(U createdBy) {
+    public void setCreatedBy(String createdBy) {
         this.createdBy = createdBy;
     }
 
@@ -2156,11 +2382,11 @@ public abstract class Auditable&lt;U&gt; {
         this.creationDate = creationDate;
     }
 
-    public U getLastModifiedBy() {
+    public String getLastModifiedBy() {
         return lastModifiedBy;
     }
 
-    public void setLastModifiedBy(U lastModifiedBy) {
+    public void setLastModifiedBy(String lastModifiedBy) {
         this.lastModifiedBy = lastModifiedBy;
     }
 
@@ -2172,6 +2398,12 @@ public abstract class Auditable&lt;U&gt; {
         this.lastModifiedDate = lastModifiedDate;
     }
 }</code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-java" data-lang="java">@Entity
+public class Link extends Auditable { }</code></pre>
 </div>
 </div>
 </div>
@@ -2210,7 +2442,12 @@ the dependency, you must follow the instructions for your IDE.</p>
 </div>
 <div class="sect2">
 <h3 id="_database_layer">Database Layer</h3>
-
+<div class="paragraph">
+<p>We need to talk about hibernate properties
+create-drop
+logging
+hibernate logging level to DEBUG</p>
+</div>
 </div>
 <div class="sect2">
 <h3 id="_spring_mvc_controller">Spring MVC: Controller</h3>

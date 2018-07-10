@@ -1,0 +1,330 @@
+
+In the project overview section we discussed the domain model. For reference I have included our basic model diagram
+below. Please remember that this is probably going to change as we begin to build out our application but this should
+give us what we need to get started.
+
+image::domain_model.png[]
+
+Now that we know what we need to build, how are we going to build it?
+
+==== JPA
+
+The Java Persistence API (JPA) is a Java application programming interface specification that describes the management of relational data in applications using Java Platform, Standard Edition and Java Platform, Enterprise Edition.
+
+Persistence in this context covers three areas:
+
+* The API itself, defined in the https://javaee.github.io/javaee-spec/javadocs/javax/persistence/package-summary.html[javax.persistence] package
+* The Java Persistence Query Language (JPQL)
+* object/relational metadata
+
+TIP: Class => Database Table +
+
+JPA is just the specification and by itself isn't all that usefull. What you need is a JPA provider that implements the specification. A couple of the most popular implementations are:
+
+* Hibernate
+* Eclipse Link
+
+==== Spring Data
+Spring Data’s mission is to provide a familiar and consistent, Spring-based programming model for data access while still retaining the special traits of the underlying data store. 
+
+https://projects.spring.io/spring-data/[Spring Data]
+
+==== Spring Data JPA
+
+https://projects.spring.io/spring-data-jpa/[Spring Data JPA]
+
+
+Implementing a data access layer of an application has been cumbersome for quite a while. Too much boilerplate code has to be written to execute simple queries as well as perform pagination, and auditing. Spring Data JPA aims to significantly improve the implementation of data access layers by reducing the effort to the amount that’s actually needed. As a developer you write your repository interfaces, including custom finder methods, and Spring will provide the implementation automatically.
+
+TIP: Spring Data JPA uses Hibernate under the hood. Through a Spring Boot Starter and Auto Configuration you don't have to do much to get Hibernate setup. This is huge because this is one of the things that deters people from starting with Hibernate in the first place.
+
+*Spring Data JPA Dependencies*
+
+You can select Spring Data JPA as one of the options using the Spring Initializr or by adding the following dependency to your pom.xml
+
+```xml
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-data-jpa</artifactId>
+</dependency>
+```
+
+NOTE: What dependencies does the spring-boot-starter-data-jpa include?
+
+---
+
+==== Entities
+
+.Link Entity
+```java
+import javax.persistence.Entity;
+import javax.persistence.GeneratedValue;
+import javax.persistence.Id;
+
+@Entity
+public class Link {
+
+    @Id
+    @GeneratedValue
+    private Long id;
+    private String title;
+    private String url;
+
+    // comments
+}
+```
+
+.Comment Entity
+```java
+import javax.persistence.Entity;
+import javax.persistence.GeneratedValue;
+import javax.persistence.Id;
+
+@Entity
+public class Comment {
+    
+    @Id
+    @GeneratedValue
+    private Long id;
+    private String body;
+
+    //private Link link;
+    
+}
+```
+.Vote Stub (We will come back to this later)
+```java
+public class Vote {
+
+    @Id @GeneratedValue
+    private Long id;
+    private User user;
+    private Link link;
+    private int vote;
+
+}
+```
+
+*Common Entity Annotations*
+
+When working with Entities these are some of the more common annotations you will be using to provide metadata about your objects. 
+
+* https://javaee.github.io/javaee-spec/javadocs/javax/persistence/Entity.html[Entity]
+* https://javaee.github.io/javaee-spec/javadocs/javax/persistence/Table.html[@Table]
+* https://javaee.github.io/javaee-spec/javadocs/javax/persistence/Id.html[@Id]
+* https://javaee.github.io/javaee-spec/javadocs/javax/persistence/GeneratedValue.html[@GeneratedValue]
+* https://javaee.github.io/javaee-spec/javadocs/javax/persistence/Column.html[@Column]
+* https://javaee.github.io/javaee-spec/javadocs/javax/persistence/Transient.html[@Transient]
+* https://javaee.github.io/javaee-spec/javadocs/javax/persistence/OrderBy.html[@OrderBy]
+* https://javaee.github.io/javaee-spec/javadocs/javax/persistence/Version.html[@Version]
+
+==== Repositories
+
+The central interface in the Spring Data repository abstraction is Repository. It takes the domain class to manage as well as the ID type of the domain class as type arguments. This interface acts primarily as a marker interface to capture the types to work with and to help you to discover interfaces that extend this one.
+
+.LinkRepository.java
+```java
+import com.vega.springit.domain.Link;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+public interface LinkRepository extends JpaRepository<Link,Long> {
+
+}
+```
+
+.CommentRepository.java
+```java
+public interface CommentRepository extends JpaRepository<Comment,Long> {
+
+}
+```
+
+* JpaRepository
+* CrudRepository
+* PagingAndSortingRepository
+
+
+
+---
+
+==== Entity Relationships (Mappings)
+
+Mappings are a key feature of Hibernate and JPA. They allow us to model the relationships between two tables in your domain objects as properties.
+
+JPA Mapping Annotations
+
+* https://javaee.github.io/javaee-spec/javadocs/javax/persistence/OneToOne.html[OneToOne Annotation]
+* https://javaee.github.io/javaee-spec/javadocs/javax/persistence/OneToMany.html[OneToMany Annotation]
+* https://javaee.github.io/javaee-spec/javadocs/javax/persistence/ManyToOne.html[ManyToOne Annotation]
+* https://javaee.github.io/javaee-spec/javadocs/javax/persistence/ManyToMany.html[ManyToMany Annotation]
+
+*Thoughts on Java*
+
+This is a really great article from Thorben Janssen on asoociation mappings in Hibernate. If you're going to start working with JPA and Hibernate his website https://www.thoughts-on-java.org[Thoughts on Java] is a must bookmark. 
+
+https://www.thoughts-on-java.org/ultimate-guide-association-mappings-jpa-hibernate/[Ultimate Guide – Association Mappings with JPA and Hibernate]
+
+When we create a bi-directional mapping we have a decision to make. What type should the collection be, a list or a set. This is something to think about and I have included another great article from Thorben on the subject. 
+
+https://www.thoughts-on-java.org/association-mappings-bag-list-set/[Bag vs Set vs List]
+
+Hibernate Tips Book on Amazon
+
+https://www.amazon.com/Hibernate-Tips-solutions-common-problems-ebook/dp/B06XXGYZHS/ref=sr_1_1?tag=toj04-20
+
+---
+
+==== Auditing
+
+Spring Data provides sophisticated support to transparently keep track of who created or changed an entity and when the change happened. To benefit from that functionality, you have to equip your entity classes with auditing metadata that can be defined either using annotations or by implementing an interface.
+
+https://docs.spring.io/spring-data/jpa/docs/current/reference/html/#auditing[Spring Data JPA Auditing]
+
+.Auditing Annotations
+```java
+@CreatedDate
+private LocalDateTime createdDate;
+
+@LastModifiedDate
+private LocalDateTime lastUpdatedDate;
+
+@CreatedBy
+private String createdBy;
+
+@LastModifiedBy
+private String modifiedBy;
+```
+
+The final step is to enable JPA Auditing and to do so we simply need to add the following annotation to a configuration class.
+
+.How to Enable JPA Auditing
+```java
+@SpringBootApplication
+@EnableJpaAuditing
+public class SpringitApplication {
+
+	private static final Logger log = LoggerFactory.getLogger(SpringitApplication.class);
+
+	public static void main(String[] args) {
+		SpringApplication.run(SpringitApplication.class, args);
+	}
+
+}
+```
+
+This is the easy approach but at some point we will to log the user that created and modified a record. To do so we
+can simply create a configuration class and make our Enable Jpa Auditing aware of the current logged in user.
+
+.Auditor Aware Configuration
+```java
+@Configuration
+@EnableJpaAuditing(auditorAwareRef = "auditorAware")
+public class JpaConfig {
+    @Bean
+    public AuditorAware<String> auditorAware() {
+        return new AuditorAwareImpl();
+    }
+
+}
+```
+
+.Auditor Aware Implementation
+```java
+public class AuditorAwareImpl implements AuditorAware<String> {
+    @Override
+    public Optional<String> getCurrentAuditor() {
+        return Optional.of(((User) SecurityContextHolder.getContext().getAuthentication().getPrincipal()).getUsername());
+    }
+}
+```
+If you have a bunch of classes that are going to be auditable you could take this route. Create an abastract class
+called Auditable and make it a https://javaee.github.io/javaee-spec/javadocs/javax/persistence/MappedSuperclass.html[mapped super class]. When your class needs to have these auditable features simply extend this class.
+
+.Auditable Mapped Super Class
+```java
+import org.springframework.data.annotation.CreatedBy;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.LastModifiedBy;
+import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
+
+import javax.persistence.EntityListeners;
+import javax.persistence.MappedSuperclass;
+import java.time.LocalDateTime;
+
+@MappedSuperclass
+@EntityListeners(AuditingEntityListener.class)
+public abstract class Auditable {
+
+    @CreatedBy
+    private String createdBy;
+
+    @CreatedDate
+    private LocalDateTime creationDate;
+
+    @LastModifiedBy
+    private String lastModifiedBy;
+
+    @LastModifiedDate
+    private LocalDateTime lastModifiedDate;
+
+    public String getCreatedBy() {
+        return createdBy;
+    }
+
+    public void setCreatedBy(String createdBy) {
+        this.createdBy = createdBy;
+    }
+
+    public LocalDateTime getCreationDate() {
+        return creationDate;
+    }
+
+    public void setCreationDate(LocalDateTime creationDate) {
+        this.creationDate = creationDate;
+    }
+
+    public String getLastModifiedBy() {
+        return lastModifiedBy;
+    }
+
+    public void setLastModifiedBy(String lastModifiedBy) {
+        this.lastModifiedBy = lastModifiedBy;
+    }
+
+    public LocalDateTime getLastModifiedDate() {
+        return lastModifiedDate;
+    }
+
+    public void setLastModifiedDate(LocalDateTime lastModifiedDate) {
+        this.lastModifiedDate = lastModifiedDate;
+    }
+}
+```
+
+```java
+@Entity
+public class Link extends Auditable { }
+```
+
+==== Project Lombok
+
+Project Lombok is a java library that automatically plugs into your editor and build tools, spicing up your java.
+Never write another getter or equals method again.
+
+https://projectlombok.org/[Project Lombok]
+
+.Lombok Dependency
+```xml
+<dependency>
+    <groupId>org.projectlombok</groupId>
+    <artifactId>lombok</artifactId>
+    <optional>true</optional>
+</dependency>
+```
+The Lombok website has installation instructions for whatever IDE you are using. It isn't enough to just install
+the dependency, you must follow the instructions for your IDE.
+
+image::lombok_install.png[]
+
+https://projectlombok.org/setup/intellij[IntelliJ Installation]
