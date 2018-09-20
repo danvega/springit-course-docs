@@ -1,4 +1,76 @@
-We need to talk about hibernate properties 
-create-drop
-logging 
-hibernate logging level to DEBUG
+
+
+In the last section we took a look at how we build out our entities and repositories. We also learned that our entities map directly to a database table. The question that remains is where is this database located? Is it being created for us or is this up to us? We are going 
+to answer these questions and more in this section. 
+
+* Database Configuration
+    ** Database Properties
+    ** H2 vs MySQL
+    ** SQL Logging
+    ** Hibernate Logging level to DEBUG
+* Database Initialization
+    ** Hibernate DDL
+    ** schema.sql
+    ** data.sql
+* ApplicationRunner vs CommandLineRunner
+
+---
+
+Common Application Properties
+https://docs.spring.io/spring-boot/docs/current/reference/html/common-application-properties.html 
+
+DATASOURCE (DataSourceAutoConfiguration & DataSourceProperties)
+JPA (JpaBaseConfiguration, HibernateJpaAutoConfiguration)
+
+Initialize a database
+
+An SQL database can be initialized in different ways depending on what your stack is. Of course, you can also do it manually, provided the database is a separate process.
+
+https://docs.spring.io/spring-boot/docs/current/reference/html/howto-database-initialization.html
+
+https://docs.spring.io/spring-boot/docs/current/reference/htmlsingle/#howto-initialize-a-database-using-spring-jdbc
+
+If you're using Spring boot 2, database initialization only works for embedded databases (H2, HSQLDB, ...). If you want to use it for other databases as well, you need to change the spring.datasource.initialization-mode property:
+
+spring.datasource.initialization-mode=always
+
+
+==== MySQL Settings
+
+```properties
+#datasource
+spring.datasource.name=springit
+spring.h2.console.enabled=true
+spring.h2.console.path=/h2-console
+#spring.datasource.username=
+##spring.datasource.password=
+
+#JPA & Hibernate
+spring.jpa.show-sql=true
+#spring.jpa.hibernate.ddl-auto=
+```
+
+```properties
+#DDL mode. This is actually a shortcut for the "hibernate.hbm2ddl.auto"
+#property. Defaults to "create-drop" when using an embedded database and no
+#schema manager was detected. Otherwise, defaults to "none".
+# create | create-drop | none | update | validate
+#spring.jpa.hibernate.ddl-auto=
+
+
+# mysql settings
+spring.jpa.hibernate.ddl-auto=create
+spring.datasource.url=jdbc:mysql://localhost:3306/springit
+spring.datasource.username=springit
+spring.datasource.password=password
+```
+
+*MySQL Use SSL*
+
+```
+Wed Jul 11 07:15:23 EDT 2018 WARN: Establishing SSL connection without server's identity verification is not recommended. According to MySQL 5.5.45+, 5.6.26+ and 5.7.6+ requirements SSL connection must be established by default if explicit option isn't set. For compliance with existing applications not using SSL the verifyServerCertificate property is set to 'false'. You need either to explicitly disable SSL by setting useSSL=false, or set useSSL=true and provide truststore for server certificate verification.
+```
+
+
+
+

@@ -2199,18 +2199,30 @@ public interface LinkRepository extends JpaRepository&lt;Link,Long&gt; {
 }</code></pre>
 </div>
 </div>
+<div class="paragraph">
+<p><strong>Repository Intefaces</strong></p>
+</div>
 <div class="ulist">
 <ul>
 <li>
-<p>JpaRepository</p>
+<p><a href="https://docs.spring.io/spring-data/jpa/docs/current/api/org/springframework/data/jpa/repository/JpaRepository.html">JpaRepository</a></p>
 </li>
 <li>
-<p>CrudRepository</p>
+<p><a href="https://docs.spring.io/spring-data/commons/docs/current/api/org/springframework/data/repository/PagingAndSortingRepository.html?is-external=true">CrudRepository</a></p>
 </li>
 <li>
-<p>PagingAndSortingRepository</p>
+<p><a href="https://docs.spring.io/spring-data/commons/docs/current/api/org/springframework/data/repository/CrudRepository.html">PagingAndSortingRepository</a></p>
 </li>
 </ul>
+</div>
+<div class="paragraph">
+<p><strong>Queries</strong></p>
+</div>
+<div class="paragraph">
+<p><strong>Named Queries</strong></p>
+</div>
+<div class="paragraph">
+<p>We will see more of this as we go throughout the course and as we need a custom query.</p>
 </div>
 <hr>
 </div>
@@ -2443,10 +2455,116 @@ the dependency, you must follow the instructions for your IDE.</p>
 <div class="sect2">
 <h3 id="_database_layer">Database Layer</h3>
 <div class="paragraph">
-<p>We need to talk about hibernate properties
-create-drop
-logging
-hibernate logging level to DEBUG</p>
+<p>In the last section we took a look at how we build out our entities and repositories. We also learned that our entities map directly to a database table. The question that remains is where is this database located? Is it being created for us or is this up to us? We are going
+to answer these questions and more in this section.</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Database Configuration</p>
+<div class="ulist">
+<ul>
+<li>
+<p>Database Properties</p>
+</li>
+<li>
+<p>H2 vs MySQL</p>
+</li>
+<li>
+<p>SQL Logging</p>
+</li>
+<li>
+<p>Hibernate Logging level to DEBUG</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p>Database Initialization</p>
+<div class="ulist">
+<ul>
+<li>
+<p>Hibernate DDL</p>
+</li>
+<li>
+<p>schema.sql</p>
+</li>
+<li>
+<p>data.sql</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p>ApplicationRunner vs CommandLineRunner</p>
+</li>
+</ul>
+</div>
+<hr>
+<div style="page-break-after: always;"></div>
+<div class="paragraph">
+<p>An SQL database can be initialized in different ways depending on what your stack is. Of course, you can also do it manually, provided the database is a separate process.</p>
+</div>
+<div class="paragraph">
+<p><a href="https://docs.spring.io/spring-boot/docs/current/reference/html/howto-database-initialization.html" class="bare">https://docs.spring.io/spring-boot/docs/current/reference/html/howto-database-initialization.html</a></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code>Wed Jul 11 07:15:23 EDT 2018 WARN: Establishing SSL connection without server's identity verification is not recommended. According to MySQL 5.5.45+, 5.6.26+ and 5.7.6+ requirements SSL connection must be established by default if explicit option isn't set. For compliance with existing applications not using SSL the verifyServerCertificate property is set to 'false'. You need either to explicitly disable SSL by setting useSSL=false, or set useSSL=true and provide truststore for server certificate verification.</code></pre>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_mysql_settings">MySQL Settings</h4>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-properties" data-lang="properties">#datasource
+spring.datasource.name=springit
+spring.h2.console.enabled=true
+spring.h2.console.path=/h2-console
+#spring.datasource.username=
+##spring.datasource.password=
+
+#JPA &amp; Hibernate
+spring.jpa.show-sql=true
+#spring.jpa.hibernate.ddl-auto=</code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-properties" data-lang="properties">#DDL mode. This is actually a shortcut for the "hibernate.hbm2ddl.auto"
+#property. Defaults to "create-drop" when using an embedded database and no
+#schema manager was detected. Otherwise, defaults to "none".
+# create | create-drop | none | update | validate
+#spring.jpa.hibernate.ddl-auto=
+
+
+# mysql settings
+spring.jpa.hibernate.ddl-auto=create
+spring.datasource.url=jdbc:mysql://localhost:3306/springit
+spring.datasource.username=springit
+spring.datasource.password=password</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Common Application Properties
+<a href="https://docs.spring.io/spring-boot/docs/current/reference/html/common-application-properties.html" class="bare">https://docs.spring.io/spring-boot/docs/current/reference/html/common-application-properties.html</a></p>
+</div>
+<div class="paragraph">
+<p>DATASOURCE (DataSourceAutoConfiguration &amp; DataSourceProperties)
+JPA (JpaBaseConfiguration, HibernateJpaAutoConfiguration)</p>
+</div>
+<div class="paragraph">
+<p>Initialize a database</p>
+</div>
+<div class="paragraph">
+<p><a href="https://docs.spring.io/spring-boot/docs/current/reference/htmlsingle/#howto-initialize-a-database-using-spring-jdbc" class="bare">https://docs.spring.io/spring-boot/docs/current/reference/htmlsingle/#howto-initialize-a-database-using-spring-jdbc</a></p>
+</div>
+<div class="paragraph">
+<p>If you&#8217;re using Spring boot 2, database initialization only works for embedded databases (H2, HSQLDB, &#8230;&#8203;). If you want to use it for other databases as well, you need to change the spring.datasource.initialization-mode property:</p>
+</div>
+<div class="paragraph">
+<p>spring.datasource.initialization-mode=always</p>
+</div>
 </div>
 </div>
 <div class="sect2">
