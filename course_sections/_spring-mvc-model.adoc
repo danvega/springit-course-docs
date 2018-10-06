@@ -1,4 +1,3 @@
-
 In the project overview section we discussed the domain model. For reference I have included our basic model diagram
 below. Please remember that this is probably going to change as we begin to build out our application but this should
 give us what we need to get started.
@@ -54,6 +53,12 @@ NOTE: What dependencies does the spring-boot-starter-data-jpa include?
 ---
 
 ==== Entities
+Now that we know a little bit about Spring Data it's time we start to create our entities. Before we do so this is a good time
+to create a new branch to work on our new feature. 
+
+```
+git checkout -b spring-mvc-model
+```
 
 .Link Entity
 ```java
@@ -105,11 +110,18 @@ public class Vote {
 }
 ```
 
+Just a few things to point out about our entities
+
+* You will need a public no arg constructor.
+* You will need getters and setters for your properties.
+* You will need a toString method for you entity.
+* You will want an equals and hash code method to check for equality.
+
 *Common Entity Annotations*
 
 When working with Entities these are some of the more common annotations you will be using to provide metadata about your objects. 
 
-* https://javaee.github.io/javaee-spec/javadocs/javax/persistence/Entity.html[Entity]
+* https://javaee.github.io/javaee-spec/javadocs/javax/persistence/Entity.html[@Entity]
 * https://javaee.github.io/javaee-spec/javadocs/javax/persistence/Table.html[@Table]
 * https://javaee.github.io/javaee-spec/javadocs/javax/persistence/Id.html[@Id]
 * https://javaee.github.io/javaee-spec/javadocs/javax/persistence/GeneratedValue.html[@GeneratedValue]
@@ -118,9 +130,37 @@ When working with Entities these are some of the more common annotations you wil
 * https://javaee.github.io/javaee-spec/javadocs/javax/persistence/OrderBy.html[@OrderBy]
 * https://javaee.github.io/javaee-spec/javadocs/javax/persistence/Version.html[@Version]
 
+
+==== Project Lombok
+
+Project Lombok is a java library that automatically plugs into your editor and build tools, spicing up your java.
+Never write another getter or equals method again.
+
+https://projectlombok.org/[Project Lombok]
+
+The Lombok website has installation instructions for whatever IDE you are using. It isn't enough to just install
+the dependency, you must follow the instructions for your IDE.
+
+image::lombok_install.png[]
+
+https://projectlombok.org/setup/intellij[IntelliJ Installation]
+
+If you can't get the Lombok plugin to work in IntelliJ you will need to make sure annotation processing is turned on for your project.
+
+image::lombok_annotation_processing.png[]
+
+.Lombok Dependency
+```xml
+<dependency>
+    <groupId>org.projectlombok</groupId>
+    <artifactId>lombok</artifactId>
+    <optional>true</optional>
+</dependency>
+```
+
 ==== Repositories
 
-The central interface in the Spring Data repository abstraction is Repository. It takes the domain class to manage as well as the ID type of the domain class as type arguments. This interface acts primarily as a marker interface to capture the types to work with and to help you to discover interfaces that extend this one.
+The central interface in the Spring Data repository abstraction is https://docs.spring.io/spring-data/commons/docs/current/api/org/springframework/data/repository/Repository.html[Repository]. It takes the domain class to manage as well as the ID type of the domain class as type arguments. This interface acts primarily as a marker interface to capture the types to work with and to help you to discover interfaces that extend this one.
 
 .LinkRepository.java
 ```java
@@ -141,16 +181,62 @@ public interface CommentRepository extends JpaRepository<Comment,Long> {
 
 *Repository Intefaces*
 
-* https://docs.spring.io/spring-data/jpa/docs/current/api/org/springframework/data/jpa/repository/JpaRepository.html[JpaRepository]
 * https://docs.spring.io/spring-data/commons/docs/current/api/org/springframework/data/repository/PagingAndSortingRepository.html?is-external=true[CrudRepository]
+* https://docs.spring.io/spring-data/jpa/docs/current/api/org/springframework/data/jpa/repository/JpaRepository.html[JpaRepository]
 * https://docs.spring.io/spring-data/commons/docs/current/api/org/springframework/data/repository/CrudRepository.html[PagingAndSortingRepository]
 
-*Queries* 
+NOTE: Spring Data also provides persistence technology-specific abstractions, such as JpaRepository or MongoRepository. Those interfaces extend CrudRepository and expose the capabilities of the underlying persistence technology in addition to the rather generic persistence technology-agnostic interfaces such as CrudRepository.
+
+*Custom Queries* 
+
+Extending one of those repositories will give us a lot of functionality out of the box and is usually enough to get started. When you start building out your application you will undoubtedly need more queries than the base repositories give you. We have a couple ways that we can define our custom queries and we will go over them below. 
 
 *Named Queries* 
 
-We will see more of this as we go throughout the course and as we need a custom query. 
+```java
+@Entity
+@NamedQuery(name = "User.findByEmailAddress",query = "select u from User u where u.emailAddress = ?1")
+public class User {
 
+}
+```
+
+*Query Methods*
+
+Using named queries to declare queries for entities is a valid approach and works fine for a small number of queries. As the queries themselves are tied to the Java method that executes them, you can actually bind them directly by using the Spring Data JPA @Query annotation rather than annotating them to the domain class. This frees the domain class from persistence specific information and co-locates the query to the repository interface.
+
+```java
+public interface UserRepository extends JpaRepository<User, Long> {
+
+  @Query("select u from User u where u.emailAddress = ?1")
+  User findByEmailAddress(String emailAddress);
+}
+```
+
+The previous example used JPQL. The @Query annotation allows for running native queries by setting the nativeQuery flag to true, as shown in the following: 
+
+```java
+public interface UserRepository extends JpaRepository<User, Long> {
+
+  @Query(value = "SELECT * FROM USERS WHERE EMAIL_ADDRESS = ?1", nativeQuery = true)
+  User findByEmailAddress(String emailAddress);
+}
+```
+
+The JPA module supports defining a query manually as a String or having it being derived from the method name. 
+
+```java
+public interface UserRepository extends Repository<User, Long> {
+
+  List<User> findByEmailAddressAndLastname(String emailAddress, String lastname);
+}
+```
+https://docs.spring.io/spring-data/jpa/docs/current/reference/html/#jpa.query-methods
+
+
+
+
+We will see more of this as we go throughout the course and as we need custom queries. 
 
 ---
 
@@ -314,24 +400,3 @@ public abstract class Auditable {
 public class Link extends Auditable { }
 ```
 
-==== Project Lombok
-
-Project Lombok is a java library that automatically plugs into your editor and build tools, spicing up your java.
-Never write another getter or equals method again.
-
-https://projectlombok.org/[Project Lombok]
-
-.Lombok Dependency
-```xml
-<dependency>
-    <groupId>org.projectlombok</groupId>
-    <artifactId>lombok</artifactId>
-    <optional>true</optional>
-</dependency>
-```
-The Lombok website has installation instructions for whatever IDE you are using. It isn't enough to just install
-the dependency, you must follow the instructions for your IDE.
-
-image::lombok_install.png[]
-
-https://projectlombok.org/setup/intellij[IntelliJ Installation]

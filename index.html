@@ -2086,6 +2086,15 @@ What dependencies does the spring-boot-starter-data-jpa include?
 </div>
 <div class="sect3">
 <h4 id="_entities">Entities</h4>
+<div class="paragraph">
+<p>Now that we know a little bit about Spring Data it&#8217;s time we start to create our entities. Before we do so this is a good time
+to create a new branch to work on our new feature.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code>git checkout -b spring-mvc-model</code></pre>
+</div>
+</div>
 <div class="listingblock">
 <div class="title">Link Entity</div>
 <div class="content">
@@ -2141,6 +2150,25 @@ public class Comment {
 </div>
 </div>
 <div class="paragraph">
+<p>Just a few things to point out about our entities</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>You will need a public no arg constructor.</p>
+</li>
+<li>
+<p>You will need getters and setters for your properties.</p>
+</li>
+<li>
+<p>You will need a toString method for you entity.</p>
+</li>
+<li>
+<p>You will want an equals and hash code method to check for equality.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
 <p><strong>Common Entity Annotations</strong></p>
 </div>
 <div class="paragraph">
@@ -2149,7 +2177,7 @@ public class Comment {
 <div class="ulist">
 <ul>
 <li>
-<p><a href="https://javaee.github.io/javaee-spec/javadocs/javax/persistence/Entity.html">Entity</a></p>
+<p><a href="https://javaee.github.io/javaee-spec/javadocs/javax/persistence/Entity.html">@Entity</a></p>
 </li>
 <li>
 <p><a href="https://javaee.github.io/javaee-spec/javadocs/javax/persistence/Table.html">@Table</a></p>
@@ -2176,9 +2204,49 @@ public class Comment {
 </div>
 </div>
 <div class="sect3">
+<h4 id="_project_lombok">Project Lombok</h4>
+<div class="paragraph">
+<p>Project Lombok is a java library that automatically plugs into your editor and build tools, spicing up your java.
+Never write another getter or equals method again.</p>
+</div>
+<div class="paragraph">
+<p><a href="https://projectlombok.org/">Project Lombok</a></p>
+</div>
+<div class="paragraph">
+<p>The Lombok website has installation instructions for whatever IDE you are using. It isn&#8217;t enough to just install
+the dependency, you must follow the instructions for your IDE.</p>
+</div>
+<div class="imageblock">
+<div class="content">
+<img src="images/lombok_install.png" alt="lombok install">
+</div>
+</div>
+<div class="paragraph">
+<p><a href="https://projectlombok.org/setup/intellij">IntelliJ Installation</a></p>
+</div>
+<div class="paragraph">
+<p>If you can&#8217;t get the Lombok plugin to work in IntelliJ you will need to make sure annotation processing is turned on for your project.</p>
+</div>
+<div class="imageblock">
+<div class="content">
+<img src="images/lombok_annotation_processing.png" alt="lombok annotation processing">
+</div>
+</div>
+<div class="listingblock">
+<div class="title">Lombok Dependency</div>
+<div class="content">
+<pre class="highlight"><code class="language-xml" data-lang="xml">&lt;dependency&gt;
+    &lt;groupId&gt;org.projectlombok&lt;/groupId&gt;
+    &lt;artifactId&gt;lombok&lt;/artifactId&gt;
+    &lt;optional&gt;true&lt;/optional&gt;
+&lt;/dependency&gt;</code></pre>
+</div>
+</div>
+</div>
+<div class="sect3">
 <h4 id="_repositories_2">Repositories</h4>
 <div class="paragraph">
-<p>The central interface in the Spring Data repository abstraction is Repository. It takes the domain class to manage as well as the ID type of the domain class as type arguments. This interface acts primarily as a marker interface to capture the types to work with and to help you to discover interfaces that extend this one.</p>
+<p>The central interface in the Spring Data repository abstraction is <a href="https://docs.spring.io/spring-data/commons/docs/current/api/org/springframework/data/repository/Repository.html">Repository</a>. It takes the domain class to manage as well as the ID type of the domain class as type arguments. This interface acts primarily as a marker interface to capture the types to work with and to help you to discover interfaces that extend this one.</p>
 </div>
 <div class="listingblock">
 <div class="title">LinkRepository.java</div>
@@ -2205,24 +2273,89 @@ public interface LinkRepository extends JpaRepository&lt;Link,Long&gt; {
 <div class="ulist">
 <ul>
 <li>
-<p><a href="https://docs.spring.io/spring-data/jpa/docs/current/api/org/springframework/data/jpa/repository/JpaRepository.html">JpaRepository</a></p>
+<p><a href="https://docs.spring.io/spring-data/commons/docs/current/api/org/springframework/data/repository/PagingAndSortingRepository.html?is-external=true">CrudRepository</a></p>
 </li>
 <li>
-<p><a href="https://docs.spring.io/spring-data/commons/docs/current/api/org/springframework/data/repository/PagingAndSortingRepository.html?is-external=true">CrudRepository</a></p>
+<p><a href="https://docs.spring.io/spring-data/jpa/docs/current/api/org/springframework/data/jpa/repository/JpaRepository.html">JpaRepository</a></p>
 </li>
 <li>
 <p><a href="https://docs.spring.io/spring-data/commons/docs/current/api/org/springframework/data/repository/CrudRepository.html">PagingAndSortingRepository</a></p>
 </li>
 </ul>
 </div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+Spring Data also provides persistence technology-specific abstractions, such as JpaRepository or MongoRepository. Those interfaces extend CrudRepository and expose the capabilities of the underlying persistence technology in addition to the rather generic persistence technology-agnostic interfaces such as CrudRepository.
+</td>
+</tr>
+</table>
+</div>
 <div class="paragraph">
-<p><strong>Queries</strong></p>
+<p><strong>Custom Queries</strong></p>
+</div>
+<div class="paragraph">
+<p>Extending one of those repositories will give us a lot of functionality out of the box and is usually enough to get started. When you start building out your application you will undoubtedly need more queries than the base repositories give you. We have a couple ways that we can define our custom queries and we will go over them below.</p>
 </div>
 <div class="paragraph">
 <p><strong>Named Queries</strong></p>
 </div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-java" data-lang="java">@Entity
+@NamedQuery(name = "User.findByEmailAddress",query = "select u from User u where u.emailAddress = ?1")
+public class User {
+
+}</code></pre>
+</div>
+</div>
 <div class="paragraph">
-<p>We will see more of this as we go throughout the course and as we need a custom query.</p>
+<p><strong>Query Methods</strong></p>
+</div>
+<div class="paragraph">
+<p>Using named queries to declare queries for entities is a valid approach and works fine for a small number of queries. As the queries themselves are tied to the Java method that executes them, you can actually bind them directly by using the Spring Data JPA @Query annotation rather than annotating them to the domain class. This frees the domain class from persistence specific information and co-locates the query to the repository interface.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-java" data-lang="java">public interface UserRepository extends JpaRepository&lt;User, Long&gt; {
+
+  @Query("select u from User u where u.emailAddress = ?1")
+  User findByEmailAddress(String emailAddress);
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The previous example used JPQL. The @Query annotation allows for running native queries by setting the nativeQuery flag to true, as shown in the following:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-java" data-lang="java">public interface UserRepository extends JpaRepository&lt;User, Long&gt; {
+
+  @Query(value = "SELECT * FROM USERS WHERE EMAIL_ADDRESS = ?1", nativeQuery = true)
+  User findByEmailAddress(String emailAddress);
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The JPA module supports defining a query manually as a String or having it being derived from the method name.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-java" data-lang="java">public interface UserRepository extends Repository&lt;User, Long&gt; {
+
+  List&lt;User&gt; findByEmailAddressAndLastname(String emailAddress, String lastname);
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p><a href="https://docs.spring.io/spring-data/jpa/docs/current/reference/html/#jpa.query-methods" class="bare">https://docs.spring.io/spring-data/jpa/docs/current/reference/html/#jpa.query-methods</a></p>
+</div>
+<div class="paragraph">
+<p>We will see more of this as we go throughout the course and as we need custom queries.</p>
 </div>
 <hr>
 </div>
@@ -2419,38 +2552,6 @@ public class Link extends Auditable { }</code></pre>
 </div>
 </div>
 </div>
-<div class="sect3">
-<h4 id="_project_lombok">Project Lombok</h4>
-<div class="paragraph">
-<p>Project Lombok is a java library that automatically plugs into your editor and build tools, spicing up your java.
-Never write another getter or equals method again.</p>
-</div>
-<div class="paragraph">
-<p><a href="https://projectlombok.org/">Project Lombok</a></p>
-</div>
-<div class="listingblock">
-<div class="title">Lombok Dependency</div>
-<div class="content">
-<pre class="highlight"><code class="language-xml" data-lang="xml">&lt;dependency&gt;
-    &lt;groupId&gt;org.projectlombok&lt;/groupId&gt;
-    &lt;artifactId&gt;lombok&lt;/artifactId&gt;
-    &lt;optional&gt;true&lt;/optional&gt;
-&lt;/dependency&gt;</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>The Lombok website has installation instructions for whatever IDE you are using. It isn&#8217;t enough to just install
-the dependency, you must follow the instructions for your IDE.</p>
-</div>
-<div class="imageblock">
-<div class="content">
-<img src="images/lombok_install.png" alt="lombok install">
-</div>
-</div>
-<div class="paragraph">
-<p><a href="https://projectlombok.org/setup/intellij">IntelliJ Installation</a></p>
-</div>
-</div>
 </div>
 <div class="sect2">
 <h3 id="_database_layer">Database Layer</h3>
@@ -2501,17 +2602,31 @@ to answer these questions and more in this section.</p>
 </ul>
 </div>
 <hr>
-<div style="page-break-after: always;"></div>
+<div class="paragraph">
+<p>Common Application Properties
+<a href="https://docs.spring.io/spring-boot/docs/current/reference/html/common-application-properties.html" class="bare">https://docs.spring.io/spring-boot/docs/current/reference/html/common-application-properties.html</a></p>
+</div>
+<div class="paragraph">
+<p>DATASOURCE (DataSourceAutoConfiguration &amp; DataSourceProperties)
+JPA (JpaBaseConfiguration, HibernateJpaAutoConfiguration)</p>
+</div>
+<div class="paragraph">
+<p>Initialize a database</p>
+</div>
 <div class="paragraph">
 <p>An SQL database can be initialized in different ways depending on what your stack is. Of course, you can also do it manually, provided the database is a separate process.</p>
 </div>
 <div class="paragraph">
 <p><a href="https://docs.spring.io/spring-boot/docs/current/reference/html/howto-database-initialization.html" class="bare">https://docs.spring.io/spring-boot/docs/current/reference/html/howto-database-initialization.html</a></p>
 </div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlight"><code>Wed Jul 11 07:15:23 EDT 2018 WARN: Establishing SSL connection without server's identity verification is not recommended. According to MySQL 5.5.45+, 5.6.26+ and 5.7.6+ requirements SSL connection must be established by default if explicit option isn't set. For compliance with existing applications not using SSL the verifyServerCertificate property is set to 'false'. You need either to explicitly disable SSL by setting useSSL=false, or set useSSL=true and provide truststore for server certificate verification.</code></pre>
+<div class="paragraph">
+<p><a href="https://docs.spring.io/spring-boot/docs/current/reference/htmlsingle/#howto-initialize-a-database-using-spring-jdbc" class="bare">https://docs.spring.io/spring-boot/docs/current/reference/htmlsingle/#howto-initialize-a-database-using-spring-jdbc</a></p>
 </div>
+<div class="paragraph">
+<p>If you&#8217;re using Spring boot 2, database initialization only works for embedded databases (H2, HSQLDB, &#8230;&#8203;). If you want to use it for other databases as well, you need to change the spring.datasource.initialization-mode property:</p>
+</div>
+<div class="paragraph">
+<p>spring.datasource.initialization-mode=always</p>
 </div>
 <div class="sect3">
 <h4 id="_mysql_settings">MySQL Settings</h4>
@@ -2546,24 +2661,12 @@ spring.datasource.password=password</code></pre>
 </div>
 </div>
 <div class="paragraph">
-<p>Common Application Properties
-<a href="https://docs.spring.io/spring-boot/docs/current/reference/html/common-application-properties.html" class="bare">https://docs.spring.io/spring-boot/docs/current/reference/html/common-application-properties.html</a></p>
+<p><strong>MySQL Use SSL</strong></p>
 </div>
-<div class="paragraph">
-<p>DATASOURCE (DataSourceAutoConfiguration &amp; DataSourceProperties)
-JPA (JpaBaseConfiguration, HibernateJpaAutoConfiguration)</p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code>Wed Jul 11 07:15:23 EDT 2018 WARN: Establishing SSL connection without server's identity verification is not recommended. According to MySQL 5.5.45+, 5.6.26+ and 5.7.6+ requirements SSL connection must be established by default if explicit option isn't set. For compliance with existing applications not using SSL the verifyServerCertificate property is set to 'false'. You need either to explicitly disable SSL by setting useSSL=false, or set useSSL=true and provide truststore for server certificate verification.</code></pre>
 </div>
-<div class="paragraph">
-<p>Initialize a database</p>
-</div>
-<div class="paragraph">
-<p><a href="https://docs.spring.io/spring-boot/docs/current/reference/htmlsingle/#howto-initialize-a-database-using-spring-jdbc" class="bare">https://docs.spring.io/spring-boot/docs/current/reference/htmlsingle/#howto-initialize-a-database-using-spring-jdbc</a></p>
-</div>
-<div class="paragraph">
-<p>If you&#8217;re using Spring boot 2, database initialization only works for embedded databases (H2, HSQLDB, &#8230;&#8203;). If you want to use it for other databases as well, you need to change the spring.datasource.initialization-mode property:</p>
-</div>
-<div class="paragraph">
-<p>spring.datasource.initialization-mode=always</p>
 </div>
 </div>
 </div>
@@ -2739,7 +2842,7 @@ I can’t wait to chat with you!</p>
 <div id="footer">
 <div id="footer-text">
 Version 0.1<br>
-Last updated 2018-07-06 07:26:34 EDT
+Last updated 2018-09-29 07:04:19 EDT
 </div>
 </div>
 <script src="prism/prism.js"></script>

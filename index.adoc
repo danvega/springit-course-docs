@@ -29,10 +29,8 @@ include::_github.adoc[]
 == Spring Boot Essentials
 include::_essentials.adoc[]
 
-
 == Building Springit
 include::_buildingSpringit.adoc[]
-
 
 == Resources
 include::_resources.adoc[]
