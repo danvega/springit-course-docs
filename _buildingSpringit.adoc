@@ -14,13 +14,10 @@ include::course_sections/_spring-mvc-model.adoc[]
 include::course_sections/_database.adoc[]
 
 === Spring MVC: Controller
-
-=== Spring Security
+include::course_sections/_spring-mvc-controller.adoc[]
 
 === Spring MVC: The Service Layer
 
 === Spring MVC: The View Layer
 
-=== Testing
-
-=== Production
+=== Spring Security
