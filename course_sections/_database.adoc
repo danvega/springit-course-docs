@@ -4,51 +4,72 @@ In the last section we took a look at how we build out our entities and reposito
 to answer these questions and more in this section. 
 
 * Database Configuration
-    ** Database Properties
+    ** Common Database Properties
     ** H2 vs MySQL
     ** SQL Logging
-    ** Hibernate Logging level to DEBUG
+    ** Hibernate logging level DEBUG
 * Database Initialization
     ** Hibernate DDL
     ** schema.sql
     ** data.sql
-* ApplicationRunner vs CommandLineRunner
+* CommandLineRunner
 
 ---
 
-Common Application Properties
+==== Common Application Properties
+
+If you can't always remember what properties can be set in your application.properties there is a really good reference at the link below.
+
 https://docs.spring.io/spring-boot/docs/current/reference/html/common-application-properties.html 
 
-DATASOURCE (DataSourceAutoConfiguration & DataSourceProperties)
-JPA (JpaBaseConfiguration, HibernateJpaAutoConfiguration)
+* DATASOURCE (DataSourceAutoConfiguration & DataSourceProperties)
+* JPA (JpaBaseConfiguration, HibernateJpaAutoConfiguration)
+* H2 Web Console
 
-Initialize a database
+==== H2
 
-An SQL database can be initialized in different ways depending on what your stack is. Of course, you can also do it manually, provided the database is a separate process.
+These settings will get us going using H2. Please remember that every time you stop your app you will lose your data, this is just how an in-memory database works. 
 
-https://docs.spring.io/spring-boot/docs/current/reference/html/howto-database-initialization.html
-
-https://docs.spring.io/spring-boot/docs/current/reference/htmlsingle/#howto-initialize-a-database-using-spring-jdbc
-
-If you're using Spring boot 2, database initialization only works for embedded databases (H2, HSQLDB, ...). If you want to use it for other databases as well, you need to change the spring.datasource.initialization-mode property:
-
-spring.datasource.initialization-mode=always
-
-
-==== MySQL Settings
+```xml
+<dependency>
+	<groupId>com.h2database</groupId>
+	<artifactId>h2</artifactId>
+	<scope>runtime</scope>
+</dependency>
+```
 
 ```properties
-#datasource
-spring.datasource.name=springit
 spring.h2.console.enabled=true
 spring.h2.console.path=/h2-console
+
+#datasource (default to testdb)
+spring.datasource.name=springit
+# sa | empty password
 #spring.datasource.username=
-##spring.datasource.password=
+#spring.datasource.password=
 
 #JPA & Hibernate
+#spring.jpa.hibernate.ddl-auto=create-drop
 spring.jpa.show-sql=true
-#spring.jpa.hibernate.ddl-auto=
 ```
+
+==== MySQL
+
+In the previous section we looked at how to use the H2 in-memory database. That is great for getting started but at some point we will want to move to a production ready database like MySQL. If you are using some other DBMS just do a quick search for what your settings will look like.
+
+```xml
+<dependency>
+	<groupId>mysql</groupId>
+	<artifactId>mysql-connector-java</artifactId>
+</dependency>
+```
+
+Unlike H2 we need to at least create the database in MySQL. We don't need to create any of the schema yet, but we need an empty database for us to use.
+
+image::mysql_empty_schema.png[]
+
+With a schema in place we can setup our MySQL specific datasource properties.
+
 
 ```properties
 #DDL mode. This is actually a shortcut for the "hibernate.hbm2ddl.auto"
@@ -60,7 +81,7 @@ spring.jpa.show-sql=true
 
 # mysql settings
 spring.jpa.hibernate.ddl-auto=create
-spring.datasource.url=jdbc:mysql://localhost:3306/springit
+spring.datasource.url=jdbc:mysql://localhost:3306/springit?useSSL=false
 spring.datasource.username=springit
 spring.datasource.password=password
 ```
@@ -71,6 +92,185 @@ spring.datasource.password=password
 Wed Jul 11 07:15:23 EDT 2018 WARN: Establishing SSL connection without server's identity verification is not recommended. According to MySQL 5.5.45+, 5.6.26+ and 5.7.6+ requirements SSL connection must be established by default if explicit option isn't set. For compliance with existing applications not using SSL the verifyServerCertificate property is set to 'false'. You need either to explicitly disable SSL by setting useSSL=false, or set useSSL=true and provide truststore for server certificate verification.
 ```
 
+image::mysql_show_tables.png[]
 
+With MySQL (and most other DBMS) you will need to give a user permissions to the database you setup. In our case we created a user called springit in MySQL Workbench and gave it privileges to access the database. 
+
+image::mysql_user_permissions.png[]
+
+==== Initialize a database
+
+A database can be initialized in different ways depending on what your stack is. Of course, you can also do it manually, provided the database is a separate process.
+
+https://docs.spring.io/spring-boot/docs/current/reference/html/howto-database-initialization.html
+
+https://docs.spring.io/spring-boot/docs/current/reference/htmlsingle/#howto-initialize-a-database-using-spring-jdbc
+
+If you're using Spring boot 2, database initialization only works for embedded databases (H2, HSQLDB, ...). If you want to use it for other databases as well, you need to change the spring.datasource.initialization-mode property:
+
+```
+spring.datasource.initialization-mode=always
+```
+
+Also make sure that you are no longer letting Hibernate create and drop the db for you.
+
+```
+spring.jpa.hibernate.ddl-auto=none
+```
+
+NOTE: If you're going to create a script for database initialization it can't be empty. If you just create the file and run the application you will see an error that looks like this.
+
+```
+Invocation of init method failed; nested exception is org.springframework.jdbc.datasource.init.UncategorizedScriptException: Failed to execute database script from resource [URL [file:/Users/vega/dev/spring-boot-2/springit/target/classes/data.sql]]; nested exception is java.lang.IllegalArgumentException: 'script' must not be null or empty
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.initializeBean(AbstractAutowireCapableBeanFactory.java:1710) ~[spring-beans-5.0.4.RELEASE.jar:5.0.4.RELEASE]
+```
+
+==== Command Line Runner
+
+A Command Line Runner is an interface that contains a single method. It is because of this single method that it is marked as a Functional Interface and we can therefore implement with a Lambda and can avoid creating a separate class to do so. 
+
+```java
+/*
+ * Copyright 2012-2017 the original author or authors.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package org.springframework.boot;
+
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
+
+/**
+ * Interface used to indicate that a bean should <em>run</em> when it is contained within
+ * a {@link SpringApplication}. Multiple {@link CommandLineRunner} beans can be defined
+ * within the same application context and can be ordered using the {@link Ordered}
+ * interface or {@link Order @Order} annotation.
+ * <p>
+ * If you need access to {@link ApplicationArguments} instead of the raw String array
+ * consider using {@link ApplicationRunner}.
+ *
+ * @author Dave Syer
+ * @see ApplicationRunner
+ */
+@FunctionalInterface
+public interface CommandLineRunner {
+
+	/**
+	 * Callback used to run the bean.
+	 * @param args incoming main method arguments
+	 * @throws Exception on error
+	 */
+	void run(String... args) throws Exception;
+
+}
+
+```
+
+Command Line Runner API: 
+
+https://docs.spring.io/spring-boot/docs/current/api/org/springframework/boot/CommandLineRunner.html 
+
+
+We could create classes that implement the Command Line Runner if you had the need to do multiple things and or didn't want to put a ton of extra code in your main application class.
+
+```java
+package com.vega.springit;
+
+import org.springframework.boot.CommandLineRunner;
+import org.springframework.core.annotation.Order;
+import org.springframework.stereotype.Component;
+
+@Component
+@Order(1)
+public class DatabaseLoader implements CommandLineRunner {
+
+    @Override
+    public void run(String... args) throws Exception {
+        // do some database work
+        System.out.println("DatabaseLoader...");
+    }
+}
+
+```
+
+```java
+package com.vega.springit;
+
+import org.springframework.boot.CommandLineRunner;
+import org.springframework.core.annotation.Order;
+import org.springframework.stereotype.Component;
+
+@Component
+@Order(2)
+public class SomeOtherRunner implements CommandLineRunner {
+    @Override
+    public void run(String... args) throws Exception {
+        // do some other work
+        System.out.println("SomeOtherRunner...");
+    }
+}
+```
+
+For this example of just loading a few records though I am going to use my main application class.
+
+```java
+@Bean
+CommandLineRunner runner() {
+    return args -> {
+
+    };
+}
+```
+
+We still need to tell Spring about our Command Line Runner to make this work. In the concrete class example we marked it as a component but that won't work for us here. The main application is annotated with SpringBootApplication which is made up of @EnableAutoConfiguration which marks this class as a configuration class.
+
+ @Configuration indicates that a class declares one or more @Bean methods and may be processed by the Spring container to generate bean definitions and service requests for those beans at runtime
+
+
+```java
+@Target(ElementType.TYPE)
+@Retention(RetentionPolicy.RUNTIME)
+@Documented
+@Inherited
+@SpringBootConfiguration
+@EnableAutoConfiguration
+@ComponentScan(excludeFilters = {
+		@Filter(type = FilterType.CUSTOM, classes = TypeExcludeFilter.class),
+		@Filter(type = FilterType.CUSTOM, classes = AutoConfigurationExcludeFilter.class) })
+public @interface SpringBootApplication { }
+```
+
+```java
+@Bean
+CommandLineRunner runner(LinkRepository linkRepository, CommentRepository commentRepository) {
+    return args -> {
+        Link link = new Link("Getting Started with Spring Boot 2","https://therealdanvega.com/spring-boot-2");
+        linkRepository.save( link );
+
+        Comment comment = new Comment("This Spring Boot 2 Link is awesome",link);
+        commentRepository.save(comment);
+        link.addComment(comment);
+
+        System.out.println(link.getComments());
+    };
+}
+```
+
+If you want to learn more about the Command Line Runner Interface I wrote up an article on it that you can read below.
+
+https://therealdanvega.com/blog/2017/04/07/spring-boot-command-line-runner
+
+image::command_line_runner.png[]
 
 
