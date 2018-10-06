@@ -1,3 +1,6 @@
+
+image::mvc.png[]
+
 In the project overview section we discussed the domain model. For reference I have included our basic model diagram
 below. Please remember that this is probably going to change as we begin to build out our application but this should
 give us what we need to get started.
