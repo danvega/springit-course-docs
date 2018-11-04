@@ -2,6 +2,7 @@
 Dan Vega <danvega@gmail.com>
 0.1, April 14, 2018
 :toc: left
+:toclevels: 3
 :icons: font
 :quick-uri: http://www.therealdanvega.com/spring-boot-2
 :docinfo: shared

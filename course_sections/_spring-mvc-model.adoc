@@ -184,9 +184,10 @@ public interface CommentRepository extends JpaRepository<Comment,Long> {
 
 *Repository Intefaces*
 
-* https://docs.spring.io/spring-data/commons/docs/current/api/org/springframework/data/repository/PagingAndSortingRepository.html?is-external=true[CrudRepository]
+* https://docs.spring.io/spring-data/commons/docs/current/api/org/springframework/data/repository/CrudRepository.html[CrudRepository]
+* https://docs.spring.io/spring-data/commons/docs/current/api/org/springframework/data/repository/PagingAndSortingRepository.html?is-external=true[PagingAndSortingRepository]
 * https://docs.spring.io/spring-data/jpa/docs/current/api/org/springframework/data/jpa/repository/JpaRepository.html[JpaRepository]
-* https://docs.spring.io/spring-data/commons/docs/current/api/org/springframework/data/repository/CrudRepository.html[PagingAndSortingRepository]
+
 
 NOTE: Spring Data also provides persistence technology-specific abstractions, such as JpaRepository or MongoRepository. Those interfaces extend CrudRepository and expose the capabilities of the underlying persistence technology in addition to the rather generic persistence technology-agnostic interfaces such as CrudRepository.
 
@@ -246,6 +247,8 @@ We will see more of this as we go throughout the course and as we need custom qu
 ==== Entity Relationships (Mappings)
 
 Mappings are a key feature of Hibernate and JPA. They allow us to model the relationships between two tables in your domain objects as properties.
+
+image::domain_model.png[]
 
 JPA Mapping Annotations
 

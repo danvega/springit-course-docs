@@ -1,0 +1,730 @@
+
+image::mvc.png[]
+
+==== Introduction to views
+
+If we were creating a REST service application we wouldn't need any view. Instead we are creating a Spring MVC app with a front end using a template engine. As we will see in a bit, we have many choices when it comes to what template engines we can use. 
+
+===== Static Content 
+
+By default, Spring Boot serves static content from a directory called /static (or /public or /resources or /META-INF/resources) in the classpath or from the root of the ServletContext.
+
+https://docs.spring.io/spring-boot/docs/current/reference/htmlsingle/#boot-features-spring-mvc-static-content
+
+===== Welcome Page
+
+Spring Boot supports both static and templated welcome pages. It first looks for an index.html file in the configured static content locations. If one is not found, it then looks for an index template. If either is found, it is automatically used as the welcome page of the application.
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Springit</title>
+</head>
+<body>
+
+    <h1>This is my welcome page</h1>
+
+</body>
+</html>
+```
+
+====== Custom Favicon
+
+Spring Boot looks for a favicon.ico in the configured static content locations and the root of the classpath (in that order). If such a file is present, it is automatically used as the favicon of the application.
+
+==== Templates
+
+Now that we know how to serve static content we need to understand how to serve dynamic content. This is where templates come into play and lucky for us Spring MVC supports a variety of template engines. 
+
+===== View Resolvers
+
+Before we dive into the different template engines we need to understand how templates work behind the scenes. It's important to undstand that there is magic going on here. The reason I say this is because if you were creating a Spring MVC application from scratch a view resolver is something you would have to manually configured. 
+
+A https://docs.spring.io/spring-boot/docs/current/reference/htmlsingle/#howto-customize-view-resolvers[ViewResolver] is a core component of Spring MVC, translating view names in @Controller to actual View implementations.
+
+===== Template Engines
+
+As well as REST web services, you can also use Spring MVC to serve dynamic HTML content. Spring MVC supports a variety of templating technologies, including Thymeleaf, FreeMarker, and JSPs. Also, many other templating engines include their own Spring MVC integrations.
+
+Spring Boot includes auto-configuration support for the following templating engines:
+
+* FreeMarker
+* Groovy
+* Thymeleaf
+* Mustache
+
+CAUTION: If possible, JSPs should be avoided. There are several known limitations when using them with embedded servlet containers.
+
+
+===== Getting Started with Thymeleaf 
+
+To get started with https://www.thymeleaf.org/[Thymeleaf] you need to select it when you are creating your project 
+
+image::thymeleaf_dependency.png[]
+
+OR add the dependency to your project.
+
+```xml
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-thymeleaf</artifactId>
+</dependency>
+```
+
+===== What is Thymeleaf
+
+https://www.thymeleaf.org/[Thymeleaf] is a modern server-side Java template engine for both web and standalone environments.
+
+Thymeleaf's main goal is to bring elegant natural templates to your development workflow — HTML that can be correctly displayed in browsers and also work as static prototypes, allowing for stronger collaboration in development teams.
+
+===== Natural Templates
+
+HTML templates written in Thymeleaf still look and work like HTML, letting the actual templates that are run in your application keep working as useful design artifacts.
+
+```html
+<table>
+  <thead>
+    <tr>
+      <th th:text="#{msgs.headers.name}">Name</th>
+      <th th:text="#{msgs.headers.price}">Price</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr th:each="prod: ${allProducts}">
+      <td th:text="${prod.name}">Oranges</td>
+      <td th:text="${#numbers.formatDecimal(prod.price, 1, 2)}">0.99</td>
+    </tr>
+  </tbody>
+</table>
+```
+
+==== Hello, Thymeleaf!
+
+Now that we know what template engines are in Spring Boot and we have selected Thymeleaf its time we give a quick test run. In our templates folder add a new file called `home.html`. 
+
+```html
+<!DOCTYPE html>
+<html lang="en" >
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Springit</title>
+</head>
+<body>
+
+    <h1>Default Welcome Message</h1>
+
+</body>
+</html>
+```
+
+Now we are going to add an attribute called title to our model that will be returned to our view for us.
+
+```java
+@Controller
+public class HomeController {
+
+    @GetMapping("/home")
+    public String home(Model model) {
+        model.addAttribute("title","Hello, Thymeleaf!");
+        return "home";
+    }
+}
+```
+
+Remember that Thymeleaf is a natural template engine that allows us to use valid HTML. If we wanted to display our title we can use a data attribute. 
+
+```html
+<h1 data-th-text="${title}">Default Welcome Message</h1>
+```
+
+This works but it also gets pretty verbose. If we add a namespace to our html file we can use a shorthand.
+
+```html
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+```
+
+Now instead of the data attribute we can just use th:
+
+```html
+<h1 th:text="${title}">Default Welcome Message</h1>
+```
+
+===== Thymeleaf Standard Dialects
+
+The first thing you will notice is that this file is HTML5 that can be correctly displayed by any browser because it does not include any non-HTML tags (browsers ignore all attributes they don’t understand, like th:text).
+
+https://www.thymeleaf.org/doc/articles/standarddialect5minutes.html 
+
+
+===== Template Reloading
+
+If you use Thymeleaf, set spring.thymeleaf.cache to false. See ThymeleafAutoConfiguration for other Thymeleaf customization options.
+
+
+==== SpringIt Templates
+
+I mentioned these towards the beginning of the course and it's finally time to use them. If you missed it earlier I created these so we wouldn't have to waste time designing some basic templates. The point of this course is to teach you all about Spring Boot, not design. If you haven't already downloaded them please do so now. 
+
+https://github.com/cfaddict/springit-templates
+
+We are going to copy all of the templates over to our static folder. 
+
+===== What we are working on
+
+TIP: Before we get started just a couple of notes before we get started with building out our templates.
+
+* We are going to leave the voting mechanism (up vote/down vote) for a later section
+* Because we haven't talked about Security yet we aren't going to work on any of the following in this section
+    ** Login / Logout
+    ** Register / Account
+    ** username of who submitted the link
+    ** Add Comment
+
+==== Thymeleaf Layouts
+
+In our templates, we will often want to include parts from other templates, parts like footers, headers, menus…
+
+In order to do this, Thymeleaf needs us to define these parts, “fragments”, for inclusion, which can be done using the th:fragment attribute.
+
+Say we want to add a head tag to all of our pages pages, we can do so by creating a fragment called head.
+
+```html
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:fragment="head">
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta name="description" content="">
+    <meta name="author" content="">
+    <title>Springit - Spring Boot Reddit Clone</title>
+    <!-- Bootstrap core CSS -->
+    <link rel="stylesheet" th:href="@{/libs/bootstrap/css/bootstrap.min.css}"/>
+    <!-- Custom styles for this template -->
+    <link rel="stylesheet" th:href="@{/css/springit.css}">
+    <!-- Google Fonts -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Oswald|Roboto" >
+    <!-- Font Awesome (for icons) -->
+    <script defer src="https://use.fontawesome.com/releases/v5.0.8/js/all.js"></script>
+</head>
+<body>
+```
+
+But what if we wanted any page using this layout to pass in its own title. No problem, we can use variables in our fragments as well.
+
+```html
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:fragment="head(title)">
+    <title th:text="${title}">Springit - Spring Boot Reddit Clone</title>
+</head>
+<body>
+```
+
+And then in a page using the head fragment we could do this.
+
+```html
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layouts/main_layout :: head(title = 'My Unique Title Goes here!')}">
+</head>
+<body>
+```
+
+There is a bunch we can do with this template approach. I would encourage you to read up on it before we moved forward. 
+
+https://www.thymeleaf.org/doc/tutorials/3.0/usingthymeleaf.html#template-layout 
+
+We are going to build a layout page that our templates can use. Create a new folder under templates called layouts and create a main_layout.html. 
+
+```html
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:fragment="head(title)">
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta name="description" content="">
+    <meta name="author" content="">
+    <title th:text="${title}">Springit - Spring Boot Reddit Clone</title>
+    <!-- Bootstrap core CSS -->
+    <link rel="stylesheet" th:href="@{/libs/bootstrap/css/bootstrap.min.css}"/>
+    <!-- Custom styles for this template -->
+    <link rel="stylesheet" th:href="@{/css/springit.css}">
+    <!-- Google Fonts -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Oswald|Roboto" >
+    <!-- Font Awesome (for icons) -->
+    <script defer src="https://use.fontawesome.com/releases/v5.0.8/js/all.js"></script>
+</head>
+<body>
+
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-spring fixed-top" th:fragment="navigation">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="fa fa-leaf" aria-hidden="true"></i>
+                SPRINGIT
+            </a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarResponsive" aria-controls="navbarResponsive"
+                    aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarResponsive">
+                <ul class="navbar-nav ml-auto">
+                    <li class="nav-item active">
+                        <a class="nav-link" href="/">
+                            <i class="fas fa-home" aria-hidden="true"></i> Home
+                        </a>
+                    </li>
+
+                    <!-- if user is signed in -->
+                    <li class="nav-item">
+                        <a class="nav-link" th:href="@{/link/submit}">
+                            <i class="fa fa-link" aria-hidden="true"></i> Submit Link</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="../auth/profile.html">
+                            <i class="fa fa-user" aria-hidden="true"></i> Account</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#">
+                            <i class="fa fa-sign-out-alt" aria-hidden="true"></i> Sign Out</a>
+                    </li>
+
+                    <!-- if user is not signed in -->
+                    <li class="nav-item">
+                        <a class="nav-link" href=../auth/login.html>
+                            <i class="fa fa-sign-in-alt" aria-hidden="true"></i> Sign In</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="../auth/register.html">
+                            <i class="fa fa-user-plus" aria-hidden="true"></i> Register</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="jumbotron jumbotron-fluid" th:fragment="jumbotron">
+        <div class="container" align="center">
+            <h2 class="display-4">Spring Boot Reddit Clone</h2>
+            <p class="lead">This is a reddit clone built using <a href="#">Spring Boot 2</a>, <a href="#"></a>Spring Framework 5</a> & so many other great projects! If you would like to learn how to build this
+                application you can check out my course, <a href="#">Getting Started with Spring Boot 2</a>.</p>
+            <a href="http://www.github.com/cfaddict/springit" class="btn btn-success" target="_blank"><i class="fab fa-github"></i>  Github Repo</a>
+            <a href="https://therealdanvega.teachable.com/p/spring-boot-2" class="btn btn-success" target="_blank"><i class="fas fa-graduation-cap"></i> Spring Boot 2 Course</a>
+        </div>
+    </div>
+
+    <div class="container" th:fragment="content">
+        <p>This is your main content</p>
+    </div>
+
+</body>
+</html>
+```
+
+I like to create a new file in this folder as well called new_page.html. This is what a basic starter page will look like.
+
+```html
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layouts/main_layout :: head(title = 'Springit - Spring Boot Reddit Clone')}">
+</head>
+<body>
+<nav th:replace="~{layouts/main_layout :: nav}"></nav>
+<div th:replace="~{layouts/main_layout :: jumbotron}"></div>
+<div th:replace="~{layouts/main_layout :: content}">
+    <p>This is my content</p>
+</div>
+</body>
+</html>
+```
+
+==== Building our Link List Page
+
+Now that we have our layout it's time to build our first page, our list of links. Before we get started it would be a good idea to have a list of links in our database. I went over to one of my favorite sub reddits https://www.reddit.com/r/springboot[/r/springboot] and just grabbed 11 items for testing. 
+
+To do so I am going to move them into our database loader and remove the bean from the main application class. 
+
+```java
+@Component
+public class DatabaseLoader implements CommandLineRunner {
+
+    private LinkRepository linkRepository;
+    private CommentRepository commentRepository;
+
+    public DatabaseLoader(LinkRepository linkRepository, CommentRepository commentRepository) {
+        this.linkRepository = linkRepository;
+        this.commentRepository = commentRepository;
+    }
+
+    @Override
+    public void run(String... args) {
+        Map<String,String> links = new HashMap<>();
+        links.put("Securing Spring Boot APIs and SPAs with OAuth 2.0","https://auth0.com/blog/securing-spring-boot-apis-and-spas-with-oauth2/?utm_source=reddit&utm_medium=sc&utm_campaign=springboot_spa_securing");
+        links.put("Easy way to detect Device in Java Web Application using Spring Mobile - Source code to download from GitHub","https://www.opencodez.com/java/device-detection-using-spring-mobile.htm");
+        links.put("Tutorial series about building microservices with SpringBoot (with Netflix OSS)","https://medium.com/@marcus.eisele/implementing-a-microservice-architecture-with-spring-boot-intro-cdb6ad16806c");
+        links.put("Detailed steps to send encrypted email using Java / Spring Boot - Source code to download from GitHub","https://www.opencodez.com/java/send-encrypted-email-using-java.htm");
+        links.put("Build a Secure Progressive Web App With Spring Boot and React","https://dzone.com/articles/build-a-secure-progressive-web-app-with-spring-boo");
+        links.put("Building Your First Spring Boot Web Application - DZone Java","https://dzone.com/articles/building-your-first-spring-boot-web-application-ex");
+        links.put("Building Microservices with Spring Boot Fat (Uber) Jar","https://jelastic.com/blog/building-microservices-with-spring-boot-fat-uber-jar/");
+        links.put("Spring Cloud GCP 1.0 Released","https://cloud.google.com/blog/products/gcp/calling-java-developers-spring-cloud-gcp-1-0-is-now-generally-available");
+        links.put("Simplest way to Upload and Download Files in Java with Spring Boot - Code to download from Github","https://www.opencodez.com/uncategorized/file-upload-and-download-in-java-spring-boot.htm");
+        links.put("Add Social Login to Your Spring Boot 2.0 app","https://developer.okta.com/blog/2018/07/24/social-spring-boot");
+        links.put("File download example using Spring REST Controller","https://www.jeejava.com/file-download-example-using-spring-rest-controller/");
+
+        links.forEach((k,v) -> {
+            linkRepository.save(new Link(k,v));
+            // we will do something with comments later
+        });
+
+        long linkCount = linkRepository.count();
+        System.out.println("Number of links in the database: " + linkCount );
+    }
+}
+```
+
+===== Pretty Time
+
+When we display time I don't want to just display the creation date. I want to display something like
+
+* moments ago
+* 10 minutes ago
+* 1 hour ago
+* 7 hours ago
+* 1 day ago
+* 10 days ago
+* 1 year ago
+
+To accomplish this we are going to include a neat little library called http://www.ocpsoft.org/prettytime/[Pretty Time].
+
+```
+<dependency>
+    <groupId>org.ocpsoft.prettytime</groupId>
+    <artifactId>prettytime</artifactId>
+    <version>4.0.1.Final</version>
+</dependency>
+```
+
+====== Link Domain Class
+
+These are a few helper methods if you get stuck.
+
+```java
+public String getDomainName() throws URISyntaxException {
+    URI uri = new URI(this.url);
+    String domain = uri.getHost();
+    return domain.startsWith("www.") ? domain.substring(4) : domain;
+}
+
+public String getPrettyTime() {
+    PrettyTime pt = BeanUtil.getBean(PrettyTime.class);
+    return pt.format(convertToDateViaInstant(getCreationDate()));
+}
+
+private Date convertToDateViaInstant(LocalDateTime dateToConvert) {
+    return java.util.Date.from(dateToConvert.atZone(ZoneId.systemDefault()).toInstant());
+}
+```
+
+Autowiring Beans into classes not managed by Spring
+
+https://dzone.com/articles/autowiring-spring-beans-into-classes-not-managed-by-spring
+
+
+```java
+package com.vega.springit.service;
+
+import org.springframework.beans.BeansException;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.ApplicationContextAware;
+import org.springframework.stereotype.Service;
+
+@Service
+public class BeanUtil implements ApplicationContextAware {
+
+    private static ApplicationContext context;
+
+    @Override
+    public void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
+        context = applicationContext;
+    }
+
+    public static <T> T getBean(Class<T> beanClass) {
+        return context.getBean(beanClass);
+    }
+}
+```
+
+This is what our link list page should look like:
+
+```html
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layouts/main_layout :: head(title='Springit - Spring Boot Reddit Clone')}">
+</head>
+<body>
+    <nav th:replace="~{layouts/main_layout :: nav}"></nav>
+    <div th:replace="~{layouts/main_layout :: jumbotron}"></div>
+
+    <div class="container" th:fragment="content">
+
+        <!-- links -->
+        <div class="row link" th:each="link : ${links}">
+            <div class="col-1">
+                <div><a href="#" class="upvote"><i class="fas fa-arrow-up"></i></a></div>
+                <div><span class="votecount">3</span></div>
+                <div><a href="#" class="downvote"><i class="fas fa-arrow-down"></i></a></div>
+            </div>
+            <div class="col-11">
+                <p class="title">
+                    <a class="title " th:href="@{'/link/' + ${link.id}}" th:text="${link.title}">
+                        Title Goes Here
+                    </a>
+                    <span class="domain">(<a th:href="${link.url}" th:text="${link.getDomainName()}">therealdanvega.com</a>)</span>
+                </p>
+                <p class="tagline ">submitted
+                    <!--<time title="Sat Mar 10 06:26:36 2018 UTC" datetime="2018-03-10T06:26:36+00:00" class="live-timestamp">2 hours ago</time> by-->
+                    <time th:title="${link.getCreationDate()}" th:datetime="${link.getCreationDate()}" class="live-timestamp" th:text="${link.getPrettyTime()}">1 hour(s)</time> by
+                    <a href="/" class="author">therealdanvega</a>
+                </p>
+                <p>
+                    <a th:href="@{'/link/' + ${link.id} + '#comments'}" class="comments" th:text="|${link.getComments().size()} comments|"><i class="fas fa-comments"></i> 0 comments</a>
+                    <a href="/" class="share"><i class="fas fa-share-square"></i> share</a>
+                </p>
+            </div>
+        </div>
+
+    </div>
+
+</body>
+</html>
+```
+
+==== Building our Link View Page
+
+We already have a working list page and now we need to create a vew page for each link. We will start out by creating a new `@GetMapping` in our `LinkController`.
+
+```java
+    @GetMapping("/link/{id}")
+    public String read(@PathVariable Long id, Model model) {
+        return "link/view";
+    }
+```
+
+And we will create a new view page. I did this by renaming link to view and using our layout fragments.
+
+```html
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layouts/main_layout :: head(title = 'Springit - Spring Boot Reddit Clone')}">
+</head>
+<body>
+
+    <nav th:replace="~{layouts/main_layout :: nav}"></nav>
+    <div th:replace="~{layouts/main_layout :: jumbotron}"></div>
+
+    <div class="container">
+
+        <!-- link -->
+        <div class="row link">
+            <div class="col-1">
+                <div><a href="#" class="upvote"><i class="fas fa-arrow-up"></i></a></div>
+                <div><span class="votecount">3</span></div>
+                <div><a href="#" class="downvote"><i class="fas fa-arrow-down"></i></a></div>
+            </div>
+            <div class="col-11">
+                <p class="title">
+                    <a class="title " href="http://therealdanvega.com/blog/2018/03/01/what-is-new-spring-boot-2">
+                        What's new in Spring Boot 2?
+                    </a>
+                    <span class="domain">(<a href="http://therealdanvega.com">therealdanvega.com</a>)</span>
+                </p>
+                <p class="tagline ">submitted
+                    <time title="Sat Mar 10 06:26:36 2018 UTC" datetime="2018-03-10T06:26:36+00:00" class="live-timestamp">2 hours ago</time> by
+                    <a href="https://www.reddit.com/user/therealdanvega" class="author">therealdanvega</a>
+                    <span class="userattrs"></span>
+                </p>
+                <p>
+                    <a href="#" class="comments"><i class="fas fa-comments"></i> 8 comments</a>
+                    <a href="#" class="share"><i class="fas fa-share-square"></i> share</a>
+                </p>
+            </div>
+        </div>
+
+        <!-- link comments -->
+        <div id="comments" class="comments">
+            <div class="row header">
+                <div class="col-1">&nbsp;</div>
+                <div class="col-11 title">
+                    all 21 comments
+                </div>
+            </div>
+            <div class="row addcomment">
+                <div class="col-1">&nbsp;</div>
+                <div class="col-11">
+                    <div class="form-group">
+                        <textarea class="form-control" id="comment" rows="3"></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Add Comment</button>
+                </div>
+            </div>
+            <!-- single comment -->
+            <div class="row comment">
+                <div class="col-1">&nbsp;</div>
+                <div class="col-11">
+                    <span><a href="#"><i class="far fa-user"></i> therealdanvega</a></span>
+                    <span><i class="far fa-clock"></i> 4 hours ago</span>
+                    <p class="body">It’s one thing I never care about, new releases of maven. Yet I do for most other things.. I really should take a look at any features released in the last while! Pull my dependencies, run my tests and upload to nexus. I don’t care for much else, I wonder what if any I’m missing.</p>
+                    <a href="#" class="permalink"><i class="fas fa-link"></i> permalink</a>
+                    <a href="#" class="like"><i class="far fa-thumbs-up"></i> Like</a>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+</body>
+</html>
+```
+
+We need to get an instance of a link based on the id in the url. What happens if that id is something random though like 999? This is why Spring Data wants to return us an Optional by default. In this case we don't need to do any null checking, we can simply ask the optional if a link is present. If it is we will send it down to our view page, if not we can redirect to our list page. 
+
+```java
+    @GetMapping("/link/{id}")
+    public String read(@PathVariable Long id,Model model) {
+        Optional<Link> link = linkRepository.findById(id);
+        if( link.isPresent() ) {
+            model.addAttribute("link",link.get());
+            model.addAttribute("success", model.containsAttribute("success"));
+            return "link/view";
+        } else {
+            return "redirect:/";
+        }
+    }
+```
+
+==== Building our Submit Page
+
+We need to be able to add a new link to our database through the UI. To do so we are going to add a form that allows anyone to enter a title and a URL and submit it. When the submission happens we will perform some validation and if it passes, we will save that link to the database. After the link has been saved we will set a flash attribute and send the user to the view page for that link. 
+
+For this to work we are going to need 2 different handler methods in our controller, one to show the page and one to handle the submission. I am also going to add a logger to our page so I can add some logging information in our methods. 
+
+```java
+private static final Logger logger = LoggerFactory.getLogger(LinkController.class);
+```
+
+```java
+    @GetMapping("/link/submit")
+    public String newLinkForm(Model model) {
+        model.addAttribute("link",new Link());
+        return "link/submit";
+    }
+
+    @PostMapping("/link/submit")
+    public String createLink(@Valid Link link, BindingResult bindingResult, Model model, RedirectAttributes redirectAttributes) {
+        return "link/submit";
+    }
+```
+
+This is what our submit page is going to look like. The key part to this page is the `th:object=""` expression. To learn more about Expressions on selections (asterisk syntax) https://www.thymeleaf.org/doc/tutorials/3.0/usingthymeleaf.html#expressions-on-selections-asterisk-syntax[click here]. 
+
+```html
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layouts/main_layout :: head(title='Springit - Spring Boot Reddit Clone')}">
+</head>
+<body>
+
+    <nav th:replace="~{layouts/main_layout :: nav}"></nav>
+    <div th:replace="~{layouts/main_layout :: jumbotron}"></div>
+
+    <div class="container">
+
+        <div class="row">
+            <div class="col-md-3"></div>
+            <div class="col-md-6">
+                <h4>Submit Link</h4>
+                <br/>
+                <form id="frmAddLink" method="POST" th:action="@{/link/submit}" th:object="${link}">
+                    <div class="form-group">
+                        <label for="title">Title</label>
+                        <input type="text"
+                               class="form-control"
+                               id="title"
+                               placeholder="Enter Title"
+                               required="required"
+                               th:field="*{title}">
+                        <small th:errors="*{title}" style="color:red;"></small>
+                    </div>
+                    <div class="form-group">
+                        <label for="url">URL</label>
+                        <input type="url" class="form-control" id="url" placeholder="URL" required="required"
+                               th:field="*{url}">
+                        <small th:errors="*{url}" style="color:red;"></small>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Submit</button>
+                </form>
+            </div>
+            <div class="col-md-3"></div>
+        </div>
+
+    </div>
+
+</body>
+
+</html>
+```
+
+===== Validation 
+
+We perform validation by adding validation rules to our entity objects. We can use rules like 
+
+* @NotNull
+* @NotEmpty
+* @URL
+
+There are so many validation rules and these are a part of the https://docs.jboss.org/hibernate/validator/5.1/api/org/hibernate/validator/constraints/package-summary.html[Hibernate Validation Library]. 
+
+===== Link Controller Methods Completed
+
+If we want to we can add a nice success message to our view page
+
+```html
+<div class="alert alert-success" role="alert" th:if="${success}">
+    Your new link was created!
+</div>
+```
+
+This is what the final controller methods look like. 
+
+```java
+@GetMapping("/link/submit")
+public String newLinkForm(Model model) {
+    model.addAttribute("link",new Link());
+    return "link/submit";
+}
+
+@PostMapping("/link/submit")
+public String createLink(@Valid Link link, BindingResult bindingResult, Model model, RedirectAttributes redirectAttributes) {
+    if( bindingResult.hasErrors() ) {
+        logger.info("Validation errors were found while submitting a new link.");
+        model.addAttribute("link",link);
+        return "link/submit";
+    } else {
+        // save our link
+        linkRepository.save(link);
+        logger.info("New Link was saved successfully.");
+        redirectAttributes
+                .addAttribute("id", link.getId())
+                .addFlashAttribute("success",true);
+        return "redirect:/link/{id}";
+    }
+}
+```
+

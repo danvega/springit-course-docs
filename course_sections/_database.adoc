@@ -55,7 +55,7 @@ spring.jpa.show-sql=true
 
 ==== MySQL
 
-In the previous section we looked at how to use the H2 in-memory database. That is great for getting started but at some point we will want to move to a production ready database like MySQL. If you are using some other DBMS just do a quick search for what your settings will look like.
+In the previous lesson we looked at how to use the H2 in-memory database. That is great for getting started but at some point we will want to move to a production ready database like MySQL. If you are using some other DBMS just do a quick search for what your settings will look like.
 
 ```xml
 <dependency>
@@ -127,7 +127,7 @@ Invocation of init method failed; nested exception is org.springframework.jdbc.d
 
 ==== Command Line Runner
 
-A Command Line Runner is an interface that contains a single method. It is because of this single method that it is marked as a Functional Interface and we can therefore implement with a Lambda and can avoid creating a separate class to do so. 
+A https://docs.spring.io/spring-boot/docs/current/api/org/springframework/boot/CommandLineRunner.html[`Command Line Runner`] is an interface that contains a single method. It is because of this single method that it is marked as a Functional Interface and we can therefore implement with a Lambda and can avoid creating a separate class to do so. 
 
 ```java
 /*

@@ -1,2 +1,128 @@
 image::mvc.png[]
 
+==== Controller Introduction
+
+We are now into the C in our MVC application. The C stands for controller and you can think of the controller as the traffic cop in our application. The controller handles incoming http requests and "directs traffic". Methods in your controller are mapped to HTTP
+by using @RequestingMapping (or one of its composed) annotations. 
+
+===== @Controller Annotation
+
+Spring MVC provides an annotation-based programming model where https://docs.spring.io/spring-framework/docs/current/javadoc-api/org/springframework/stereotype/Controller.html[@Controller] and https://docs.spring.io/spring-framework/docs/current/javadoc-api/org/springframework/web/bind/annotation/RestController.html[@RestController] components use annotations to express request mappings, request input, exception handling, and more. Annotated controllers have flexible method signatures and do not have to extend base classes nor implement specific interfaces. The following example shows a controller defined by annotations:
+
+```java
+@Controller
+public class HelloController {
+
+    @GetMapping("/hello")
+    public String handle(Model model) {
+        model.addAttribute("message", "Hello World!");
+        return "index";
+    }
+}
+```
+
+===== @Controller,@Component, @Service (Stereo-type annotations)
+
+What are all of the annotations I am seeing at the top of classes. I have seen things `@Component`, `@Controller`, `@RestController`, `@Service` and I just don't understand what they are. Luckily I have already written a pretty good article on how these all work. So if you have a chance please read through the following blog post.
+
+https://therealdanvega.com/blog/2017/03/27/spring-stereotype-annotations 
+
+===== @ComponentScan
+By default Spring is going to look in your base package for components. If you want to include controllers(components) outside of your base package you need to use https://docs.spring.io/spring/docs/current/javadoc-api/org/springframework/context/annotation/ComponentScan.html[@ComponentScan]
+
+```java
+@SpringBootApplication
+@ComponentScan(basePackages = {"com.foo.components"})
+public class SpringitApplication {
+
+	private static final Logger log = LoggerFactory.getLogger(SpringitApplication.class);
+
+	public static void main(String[] args) {
+		SpringApplication.run(SpringitApplication.class, args);
+	}
+
+}
+```
+
+
+==== @Controller vs @RestController
+
+https://docs.spring.io/spring-framework/docs/current/javadoc-api/org/springframework/web/bind/annotation/RestController.html[@RestController] is a composed annotation that is itself meta-annotated with https://docs.spring.io/spring-framework/docs/current/javadoc-api/org/springframework/stereotype/Controller.html[@Controller] and https://docs.spring.io/spring-framework/docs/current/javadoc-api/org/springframework/web/bind/annotation/RequestBody.html[@ResponseBody] to indicate a controller whose every method inherits the type-level @ResponseBody annotation and, therefore, writes directly to the response body versus view resolution and rendering with an HTML template.
+
+If you create a templates folder under resources with an index.html file containing the following code you can switch `@RestController` to `@Controller` and see the it in action. 
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Springit</title>
+</head>
+<body>
+
+    <h1>Welcome to SpringIt!</h1>
+
+</body>
+</html>
+```
+
+
+===== @RequestMapping
+
+You can use the https://docs.spring.io/spring-framework/docs/current/javadoc-api/org/springframework/web/bind/annotation/RequestMapping.html[@RequestMapping] annotation to map requests to controllers methods. It has various attributes to match by URL, HTTP method, request parameters, headers, and media types. You can use it at the class level to express shared mappings or at the method level to narrow down to a specific endpoint mapping.
+
+```java
+@RequestMapping( path = "/", method = RequestMethod.GET, consumes = "application/json", produces = "application.json")
+public String home(){
+    return "Hello, Spring Boot 2!";
+}
+```
+
+There are also HTTP method specific shortcut variants of @RequestMapping:
+
+* https://docs.spring.io/spring-framework/docs/current/javadoc-api/org/springframework/web/bind/annotation/GetMapping.html[@GetMapping]
+* https://docs.spring.io/spring-framework/docs/current/javadoc-api/org/springframework/web/bind/annotation/PostMapping.html[@PostMapping]
+* https://docs.spring.io/spring-framework/docs/current/javadoc-api/org/springframework/web/bind/annotation/PutMapping.html[@PutMapping]
+* https://docs.spring.io/spring-framework/docs/current/javadoc-api/org/springframework/web/bind/annotation/DeleteMapping.html[@DeleteMapping]
+* https://docs.spring.io/spring-framework/docs/current/javadoc-api/org/springframework/web/bind/annotation/PatchMapping.html[@PatchMapping]
+
+
+===== Handler Methods
+
+@RequestMapping handler methods have a flexible signature and can choose from a range of supported controller method arguments and return values. I have included a link
+to the documentation that covers all of the available handler method arguments. 
+
+https://docs.spring.io/spring/docs/current/spring-framework-reference/web.html#mvc-ann-methods
+
+
+==== Link Controller
+
+Now that we know a little bit more about controllers and what methods are available to us we should be able to start building out the basic parts of our Link Controller. Create a new class in the controller package called `LinkController.java`. We are going to start with some stub methods and discuss a few things about how to start implementing them. 
+
+
+```java
+@RestController
+public class LinkController {
+
+    // list
+    public List<Link> list() {
+        return null;
+    }
+
+    // CRUD
+    public Link create() {
+        return null;
+    }
+    public Link read() {
+        return null;
+    }
+    public Link update() {
+        return null;
+    }
+    public void delete() {
+        
+    }
+}
+```

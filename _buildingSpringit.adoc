@@ -16,8 +16,10 @@ include::course_sections/_database.adoc[]
 === Spring MVC: Controller
 include::course_sections/_spring-mvc-controller.adoc[]
 
+=== Spring MVC: The View Layer
+include::course_sections/_spring-mvc-view.adoc[]
+
 === Spring MVC: The Service Layer
 
-=== Spring MVC: The View Layer
 
 === Spring Security
