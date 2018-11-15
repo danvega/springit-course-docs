@@ -577,6 +577,14 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <li><a href="#_account_registration">Account &amp; Registration</a></li>
 </ul>
 </li>
+<li><a href="#_voting">Voting</a>
+<ul class="sectlevel3">
+<li><a href="#_voting_2">Voting</a></li>
+<li><a href="#_vote_entity_repository">Vote Entity &amp; Repository</a></li>
+<li><a href="#_vote_controller">Vote Controller</a></li>
+<li><a href="#_up_vote_down_vote">Up Vote &amp; Down Vote</a></li>
+</ul>
+</li>
 <li><a href="#_spring_mvc_the_service_layer">Spring MVC: The Service Layer</a></li>
 </ul>
 </li>
@@ -5588,6 +5596,256 @@ public String register() {
 
 &lt;/body&gt;
 &lt;/html&gt;</code></pre>
+</div>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_voting">Voting</h3>
+<div class="sect3">
+<h4 id="_voting_2">Voting</h4>
+<div class="paragraph">
+<p>Before we can work on our voting mechanism we need to discuss what exactly it is and what we want to accomplish here. When you are looking at a list of links or posts on Reddit you have the opportunity to up vote or down vote.</p>
+</div>
+<div class="imageblock">
+<div class="content">
+<img src="images/reddit_spring_boot.png" alt="reddit spring boot">
+</div>
+</div>
+<div class="paragraph">
+<p>Here is an explanation right from the <a href="https://www.reddit.com/wiki/faq" class="bare">https://www.reddit.com/wiki/faq</a> [Reddit FAQ] on scores.</p>
+</div>
+<div class="paragraph">
+<p><strong>How is a submission&#8217;s score determined?</strong></p>
+</div>
+<div class="paragraph">
+<p>A submission&#8217;s score is simply the number of upvotes minus the number of downvotes. If five users like the submission and three users don&#8217;t it will have a score of 2. Please note that the vote numbers are not "real" numbers, they have been "fuzzed" to prevent spam bots etc. So taking the above example, if five users upvoted the submission, and three users downvote it, the upvote/downvote numbers may say 23 upvotes and 21 downvotes, or 12 upvotes, and 10 downvotes. The points score is correct, but the vote totals are "fuzzed".</p>
+</div>
+<div class="sect4">
+<h5 id="_springit_scores">Springit Scores</h5>
+<div class="paragraph">
+<p>We are going to simplify this so we don&#8217;t get out of hand. We are going to allow any user the ability to up vote and down vote a link as many times as they want. The way we are going to go about this though should allow you to make a few changes and prevent this.</p>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_vote_entity_repository">Vote Entity &amp; Repository</h4>
+<div class="paragraph">
+<p>The first thing we need to do to make our voting mechnaism work is to setup a Vote Entity &amp; Repository. The Entity is going to be pretty simple and contain an id, direction and link. The direction will tell us if this record is an upvote (1) or downvote (-1).</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-java" data-lang="java">@Entity
+@NoArgsConstructor
+@RequiredArgsConstructor
+@Getter
+@Setter
+public class Vote extends Auditable {
+
+    @Id
+    @GeneratedValue
+    private Long id;
+
+    @NonNull
+    private short direction;
+
+    @NonNull
+    @ManyToOne
+    private Link link;
+
+}</code></pre>
+</div>
+</div>
+<div class="admonitionblock tip">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-tip" title="Tip"></i>
+</td>
+<td class="content">
+if you want to prevent users from voting multiple times you would want to store the UserID on the vote to see if they have voted on this link already or not.
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>We also need to make a few changes to the <code>Link</code> Entity. We are adding the association from Link to Vote but this just gives us a list of votes for each Link. If we wanted to know the total we would have to loop through our votes and sum them up right? We can&#8217;t just ask for a <code>votes.size()</code> because that will just give us the number of votes, not the actual vote sum.</p>
+</div>
+<div class="paragraph">
+<p>To fix this we are going to store a voteCount and start it at 0. We would not want to calculate this for each and every link every single time.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-java" data-lang="java">    @OneToMany(mappedBy = "link")
+    private List&lt;Vote&gt; votes = new ArrayList&lt;&gt;();
+
+    private int voteCount = 0;</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Finally we will create a Repository for our Vote Domain.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-java" data-lang="java">public interface VoteRepository extends JpaRepository&lt;Vote,Long&gt; {
+
+}</code></pre>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_vote_controller">Vote Controller</h4>
+<div class="paragraph">
+<p>Now that we have a Vote Entity and Repository we can begin to work on our controller. We are going to create a new controller called <code>VoteController</code> and walk through what this actually needs to do.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-java" data-lang="java">@RestController
+public class VoteController {
+
+    private VoteRepository voteRepository;
+    private LinkRepository linkRepository;
+
+    public VoteController(VoteRepository voteRepository, LinkRepository linkRepository) {
+        this.voteRepository = voteRepository;
+        this.linkRepository = linkRepository;
+    }
+
+    @Secured({"ROLE_USER"})
+    @GetMapping("/vote/link/{linkID}/direction/{direction}/votecount/{voteCount}")
+    public int vote(@PathVariable Long linkID, @PathVariable short direction, @PathVariable int voteCount) {
+        Optional&lt;Link&gt; optionalLink = linkRepository.findById(linkID);
+        if( optionalLink.isPresent() ) {
+            Link link = optionalLink.get();
+            Vote vote = new Vote(direction,link);
+            voteRepository.save(vote);
+
+            int updatedVoteCount = voteCount + direction;
+            link.setVoteCount(updatedVoteCount);
+            linkRepository.save(link);
+            return updatedVoteCount;
+        }
+
+        return voteCount;
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Now that our controller is done we need to make our front end work.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_up_vote_down_vote">Up Vote &amp; Down Vote</h4>
+<div class="paragraph">
+<p>To make our up vote and down vote actually work we need to do some work on our home page. What we want to do here is add some functionality that will allow the user to click on an arrow and call our <code>VoteController</code>.</p>
+</div>
+<div class="paragraph">
+<p>The first thing we need to do is update our code to add a few attributes. This is just going to help us write our script that calls our API.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-html" data-lang="html">&lt;div class="col-1"&gt;
+    &lt;div&gt;&lt;a href="#" class="upvote" th:data-id="${link.id}"&gt;&lt;i class="fas fa-arrow-up"&gt;&lt;/i&gt;&lt;/a&gt;&lt;/div&gt;
+    &lt;div&gt;&lt;span th:id="|votecount-${link.id}|" class="votecount" th:text="${link.getVoteCount()}"&gt;0&lt;/span&gt;&lt;/div&gt;
+    &lt;div&gt;&lt;a href="#" class="downvote" th:data-id="${link.id}" th:disabled="true"&gt;&lt;i class="fas fa-arrow-down"&gt;&lt;/i&gt;&lt;/a&gt;&lt;/div&gt;
+&lt;/div&gt;</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Next we will create a script that gets all of the vote links and adds a click event listener to them. Finally we get some data together and then call our API.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-javascript" data-lang="javascript">&lt;script&gt;
+    const allvotes = document.querySelectorAll(".upvote, .downvote");
+    for(let i=0; i&lt;allvotes.length; i++) {
+        let className = allvotes[i].className;
+        allvotes[i].addEventListener('click', function (event) {
+            const direction = className === 'upvote' ? 1 : -1;
+            const linkID = this.getAttribute("data-id");
+            const voteSum = document.getElementById('votecount-' + linkID);
+            const voteSumValue = voteSum.innerHTML;
+            fetch(`http://localhost:8080/vote/link/${linkID}/direction/${direction}/votecount/${voteSumValue}`)
+                .then(response =&gt; response.json())
+                .then(data =&gt; voteSum.innerHTML = data)
+                .catch(err =&gt; console.error(err));
+        });
+    }
+&lt;/script&gt;</code></pre>
+</div>
+</div>
+<div class="admonitionblock tip">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-tip" title="Tip"></i>
+</td>
+<td class="content">
+Take a look at the H2 Console and look at the vote_count column!
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>Everything is starting to look pretty good but we still have one issue. Nothing is really secure and we have an issue if we aren&#8217;t logged in and try to vote.</p>
+</div>
+<div class="sect5">
+<h6 id="_security">Security</h6>
+<div class="paragraph">
+<p>The first thing we need to fix is the error that is happening when we try and vote when we aren&#8217;t logged in. In our AuditorAwareImpl we try and get the authentication object and if it isn&#8217;t null we get the user. The problem here is that in this case the authentication object isn&#8217;t null but we actually don&#8217;t have a logged in user. This is because by default there is an "anonymousUser" and we need to check for that.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-java" data-lang="java">public class AuditorAwareImpl implements AuditorAware&lt;String&gt; {
+    @Override
+    public Optional&lt;String&gt; getCurrentAuditor() {
+        if(SecurityContextHolder.getContext().getAuthentication() == null || SecurityContextHolder.getContext().getAuthentication().getPrincipal().equals("anonymousUser")) {
+            return Optional.of("admin@gmail.com");
+        } else {
+            return Optional.of(((User) SecurityContextHolder.getContext().getAuthentication().getPrincipal()).getEmail());
+        }
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Next we want to make sure these click event listeners aren&#8217;t created if you&#8217;re not logged in.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-javascript" data-lang="javascript">&lt;script sec:authorize="isFullyAuthenticated()"&gt;</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Given that our REST API is wide open and its a GET anyone could pop a link into the address bar and vote. We want to prevent that and make sure only logged in users with the role of <code>ROLE_USER</code> can hit it. To do so we can use an annotation from <code>Spring Security</code>.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-java" data-lang="java">@Secured({"ROLE_USER"})
+@GetMapping("/vote/link/{linkID}/direction/{direction}/votecount/{voteCount}")
+public int vote(@PathVariable Long linkID, @PathVariable short direction, @PathVariable int voteCount) {
+    ...
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>To enable this we need to add one more annotation to our Security Configuration class.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-java" data-lang="java">@Configuration
+@EnableWebSecurity
+@EnableGlobalMethodSecurity(securedEnabled = true)
+public class SecurityConfiguration extends WebSecurityConfigurerAdapter {
+
+    ...
+
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>And with that I think we have a pretty solid voting mechanism. We can of course improve upon it but for now I think it works pretty well.</p>
 </div>
 </div>
 </div>

@@ -22,5 +22,8 @@ include::course_sections/_spring-mvc-view.adoc[]
 === Spring Security
 include::course_sections/_spring-security.adoc[]
 
+=== Voting
+include::course_sections/_voting.adoc[]
+
 === Spring MVC: The Service Layer
 

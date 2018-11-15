@@ -1,0 +1,190 @@
+==== Voting
+
+Before we can work on our voting mechanism we need to discuss what exactly it is and what we want to accomplish here. When you are looking at a list of links or posts on Reddit you have the opportunity to up vote or down vote. 
+
+image::reddit_spring_boot.png[]
+
+Here is an explanation right from the https://www.reddit.com/wiki/faq [Reddit FAQ] on scores.
+
+**How is a submission's score determined?**
+
+A submission's score is simply the number of upvotes minus the number of downvotes. If five users like the submission and three users don't it will have a score of 2. Please note that the vote numbers are not "real" numbers, they have been "fuzzed" to prevent spam bots etc. So taking the above example, if five users upvoted the submission, and three users downvote it, the upvote/downvote numbers may say 23 upvotes and 21 downvotes, or 12 upvotes, and 10 downvotes. The points score is correct, but the vote totals are "fuzzed".
+
+===== Springit Scores
+
+We are going to simplify this so we don't get out of hand. We are going to allow any user the ability to up vote and down vote a link as many times as they want. The way we are going to go about this though should allow you to make a few changes and prevent this. 
+
+
+==== Vote Entity & Repository
+
+The first thing we need to do to make our voting mechnaism work is to setup a Vote Entity & Repository. The Entity is going to be pretty simple and contain an id, direction and link. The direction will tell us if this record is an upvote (1) or downvote (-1).
+
+```java
+@Entity
+@NoArgsConstructor
+@RequiredArgsConstructor
+@Getter
+@Setter
+public class Vote extends Auditable {
+
+    @Id
+    @GeneratedValue
+    private Long id;
+
+    @NonNull
+    private short direction;
+
+    @NonNull
+    @ManyToOne
+    private Link link;
+
+}
+```
+
+TIP: if you want to prevent users from voting multiple times you would want to store the UserID on the vote to see if they have voted on this link already or not. 
+
+We also need to make a few changes to the `Link` Entity. We are adding the association from Link to Vote but this just gives us a list of votes for each Link. If we wanted to know the total we would have to loop through our votes and sum them up right? We can't just ask for a `votes.size()` because that will just give us the number of votes, not the actual vote sum.
+
+To fix this we are going to store a voteCount and start it at 0. We would not want to calculate this for each and every link every single time. 
+
+```java
+    @OneToMany(mappedBy = "link")
+    private List<Vote> votes = new ArrayList<>();
+
+    private int voteCount = 0;
+```
+
+Finally we will create a Repository for our Vote Domain. 
+
+```java
+public interface VoteRepository extends JpaRepository<Vote,Long> {
+
+}
+```
+
+==== Vote Controller
+
+Now that we have a Vote Entity and Repository we can begin to work on our controller. We are going to create a new controller called `VoteController` and walk through what this actually needs to do. 
+
+```java
+@RestController
+public class VoteController {
+
+    private VoteRepository voteRepository;
+    private LinkRepository linkRepository;
+
+    public VoteController(VoteRepository voteRepository, LinkRepository linkRepository) {
+        this.voteRepository = voteRepository;
+        this.linkRepository = linkRepository;
+    }
+
+    @Secured({"ROLE_USER"})
+    @GetMapping("/vote/link/{linkID}/direction/{direction}/votecount/{voteCount}")
+    public int vote(@PathVariable Long linkID, @PathVariable short direction, @PathVariable int voteCount) {
+        Optional<Link> optionalLink = linkRepository.findById(linkID);
+        if( optionalLink.isPresent() ) {
+            Link link = optionalLink.get();
+            Vote vote = new Vote(direction,link);
+            voteRepository.save(vote);
+
+            int updatedVoteCount = voteCount + direction;
+            link.setVoteCount(updatedVoteCount);
+            linkRepository.save(link);
+            return updatedVoteCount;
+        }
+
+        return voteCount;
+    }
+}
+```
+
+Now that our controller is done we need to make our front end work. 
+
+==== Up Vote & Down Vote
+
+To make our up vote and down vote actually work we need to do some work on our home page. What we want to do here is add some functionality that will allow the user to click on an arrow and call our `VoteController`. 
+
+The first thing we need to do is update our code to add a few attributes. This is just going to help us write our script that calls our API.
+
+```html
+<div class="col-1">
+    <div><a href="#" class="upvote" th:data-id="${link.id}"><i class="fas fa-arrow-up"></i></a></div>
+    <div><span th:id="|votecount-${link.id}|" class="votecount" th:text="${link.getVoteCount()}">0</span></div>
+    <div><a href="#" class="downvote" th:data-id="${link.id}" th:disabled="true"><i class="fas fa-arrow-down"></i></a></div>
+</div>
+```
+
+Next we will create a script that gets all of the vote links and adds a click event listener to them. Finally we get some data together and then call our API.
+
+```javascript
+<script>
+    const allvotes = document.querySelectorAll(".upvote, .downvote");
+    for(let i=0; i<allvotes.length; i++) {
+        let className = allvotes[i].className;
+        allvotes[i].addEventListener('click', function (event) {
+            const direction = className === 'upvote' ? 1 : -1;
+            const linkID = this.getAttribute("data-id");
+            const voteSum = document.getElementById('votecount-' + linkID);
+            const voteSumValue = voteSum.innerHTML;
+            fetch(`http://localhost:8080/vote/link/${linkID}/direction/${direction}/votecount/${voteSumValue}`)
+                .then(response => response.json())
+                .then(data => voteSum.innerHTML = data)
+                .catch(err => console.error(err));
+        });
+    }
+</script>
+```
+
+TIP: Take a look at the H2 Console and look at the vote_count column!
+
+Everything is starting to look pretty good but we still have one issue. Nothing is really secure and we have an issue if we aren't logged in and try to vote.
+
+===== Security 
+
+The first thing we need to fix is the error that is happening when we try and vote when we aren't logged in. In our AuditorAwareImpl we try and get the authentication object and if it isn't null we get the user. The problem here is that in this case the authentication object isn't null but we actually don't have a logged in user. This is because by default there is an "anonymousUser" and we need to check for that.
+
+```java
+public class AuditorAwareImpl implements AuditorAware<String> {
+    @Override
+    public Optional<String> getCurrentAuditor() {
+        if(SecurityContextHolder.getContext().getAuthentication() == null || SecurityContextHolder.getContext().getAuthentication().getPrincipal().equals("anonymousUser")) {
+            return Optional.of("admin@gmail.com");
+        } else {
+            return Optional.of(((User) SecurityContextHolder.getContext().getAuthentication().getPrincipal()).getEmail());
+        }
+    }
+}
+```
+
+Next we want to make sure these click event listeners aren't created if you're not logged in. 
+
+```javascript
+<script sec:authorize="isFullyAuthenticated()">
+```
+
+Given that our REST API is wide open and its a GET anyone could pop a link into the address bar and vote. We want to prevent that and make sure only logged in users with the role of `ROLE_USER` can hit it. To do so we can use an annotation from `Spring Security`.
+
+```java
+@Secured({"ROLE_USER"})
+@GetMapping("/vote/link/{linkID}/direction/{direction}/votecount/{voteCount}")
+public int vote(@PathVariable Long linkID, @PathVariable short direction, @PathVariable int voteCount) {
+    ...
+}
+```
+
+To enable this we need to add one more annotation to our Security Configuration class. 
+
+```java
+@Configuration
+@EnableWebSecurity
+@EnableGlobalMethodSecurity(securedEnabled = true)
+public class SecurityConfiguration extends WebSecurityConfigurerAdapter { 
+
+    ...
+
+}
+```
+
+And with that I think we have a pretty solid voting mechanism. We can of course improve upon it but for now I think it works pretty well.
+
+
