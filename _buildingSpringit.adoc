@@ -19,7 +19,8 @@ include::course_sections/_spring-mvc-controller.adoc[]
 === Spring MVC: The View Layer
 include::course_sections/_spring-mvc-view.adoc[]
 
+=== Spring Security
+include::course_sections/_spring-security.adoc[]
+
 === Spring MVC: The Service Layer
 
-
-=== Spring Security

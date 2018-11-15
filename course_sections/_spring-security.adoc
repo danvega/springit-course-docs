@@ -1,0 +1,802 @@
+image::spring-security.jpeg[]
+
+==== Spring Security Introduction
+
+IMPORTANT: CREATE NEW BRANCH CALLED spring-security
+
+In this lesson we are going to discuss a very important topic and that is security. It turns out that Security is really hard and it isn't something that we want to build ourselves. Luckily for us the Spring Security project is the standard for securing Spring based applications and it is really good at it. 
+
+There were some important changes in Spring Boot 2 & Spring Security 5 so we are going to dive right into those. In this section we will start by adding the spring boot security starter that will bring in most of everything we will need and from there we will gradually build on that until we have what we need to move forward. 
+
+===== What is Spring Security?
+
+Spring Security is a powerful and highly customizable authentication and access-control framework. It is the de-facto standard for securing Spring-based applications.
+
+Spring Security is a framework that focuses on providing both authentication and authorization to Java applications. Like all Spring projects, the real power of Spring Security is found in how easily it can be extended to meet custom requirements
+
+**Features**
+
+* Comprehensive and extensible support for both Authentication and Authorization
+* Protection against attacks like session fixation, clickjacking, cross site request forgery, etc
+* Servlet API integration
+* Optional integration with Spring Web MVC
+* Much more…
+
+===== What's new in Spring Boot 2.0
+
+https://spring.io/blog/2017/09/15/security-changes-in-spring-boot-2-0-m4
+
+===== Getting Started
+
+To get started with Spring Security you can select it in the Spring Initializer or you can just include the Spring Boot Starter Security.  
+
+```
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-security</artifactId>
+</dependency>
+```
+
+TIP: If you cmd+click (ctrl+click on pc) on the artifact you can see what the starter includes.
+
+If we go ahead and run the application we should see that everything is locked down by default. The reason for this is that this is the default configuration for web security. 
+
+```
+/**
+ * The default configuration for web security. It relies on Spring Security's
+ * content-negotiation strategy to determine what sort of authentication to use. If the
+ * user specifies their own {@link WebSecurityConfigurerAdapter}, this will back-off
+ * completely and the users should specify all the bits that they want to configure as
+ * part of the custom security configuration.
+ *
+ * @author Madhura Bhave
+ * @since 2.0.0
+ */
+@ConditionalOnClass(WebSecurityConfigurerAdapter.class)
+@ConditionalOnMissingBean(WebSecurityConfigurerAdapter.class)
+@ConditionalOnWebApplication(type = Type.SERVLET)
+public class SpringBootWebSecurityConfiguration {
+
+	@Configuration
+	@Order(SecurityProperties.BASIC_AUTH_ORDER)
+	static class DefaultConfigurerAdapter extends WebSecurityConfigurerAdapter {
+
+	}
+
+}
+```
+
+TIP: The default username is `user` and the password is generated and displayed in the console.
+
+```
+Using default security password: 78fa095d-3f4c-48b1-ad50-e24c31d5cf35
+```
+
+If you want to learn more you can start digging through the Spring Boot Reference docs on security.
+
+https://docs.spring.io/spring-boot/docs/current/reference/html/boot-features-security.html
+
+==== Spring Security Configuration
+
+Now that Spring Security is on the class path everything is locked down. We don't want visitors to have to login just to view data like our home page listing of links and a single link. To do this we need to setup our own security configuration. I am going to create a package called security and create a new class called `SecurityConfiguration` that will extend the `WebSecurityConfigurerAdapter`. 
+
+We are going to mark this class as a `@Configuration` class, `@EnableWebSecurity` and override the `configure(HttpSecurity http)` method. 
+
+```java
+@Configuration
+@EnableWebSecurity
+public class SecurityConfiguration extends WebSecurityConfigurerAdapter {
+
+    @Override
+    protected void configure(HttpSecurity http) throws Exception {
+
+    }
+
+}
+```
+
+Now with that in place we can start to configure our application. If you want to learn more about what we are doing here check out the Spring Security documentation on https://docs.spring.io/spring-security/site/docs/current/reference/html/jc.html#jc-httpsecurity[HttpSecurity].
+
+
+```java
+protected void configure(HttpSecurity http) throws Exception {
+    http
+        .authorizeRequests()
+            .anyRequest().authenticated()
+            .and()
+        .formLogin()
+            .and()
+        .httpBasic();
+}
+```
+
+The default configuration above:
+
+* Ensures that any request to our application requires the user to be authenticated
+* Allows users to authenticate with form based login
+* Allows users to authenticate with HTTP Basic authentication
+
+TIP: Remember that rules are read top down. If you have a rule 1st it will override rules that follow. A quick way to test this is to have a rule that permits any request after the any request must be authenticated rule.
+
+If we want to setup some roles for our default user we can by using the following property:
+
+```
+spring.security.user.roles=
+```
+
+==== Users & Roles
+
+In the last lesson we used the default user & auto generated password to test our configuration. While It was good for a quick test we really need to implement something a little bit better. In this lesson we are going to create our User & Role entities and hook them into Spring Security.  
+
+===== Authentication vs Authorization
+
+We have heard these terms a couple of times now so it seems like its a good time to talk about them. Spring Security is both an `Authentication` and `Authorization` framework so it's important that we understand what both of those are. 
+
+**Authentication** is the process of determining that somebody is really who they claim to be. 
+
+**Authorization** is the process of verifying that you have access to something. Gaining access to a resource (e.g. a controller method or set of methods) because the permissions configured on it allow you access is authorization.
+
+==== User & Role Entities
+
+**Authentication: User**
+
+For Authentication we are going to create a user class. A user class normally has some type of username field and in our case we are going to use the email address as the users `username`. The user will also need a password which will be stored in the database as encrypted text. It is never a good idea to store plain text passwords and It's great to see that Spring Security doesn't even give us this option. 
+
+To hook our user class into Spring Security we are going to implement Spring Security's UserDetails class. By implementing this this interface we will need to provide a concrete implementation for the following methods. 
+
+* Collection<? extends GrantedAuthority> getAuthorities();
+* String getPassword();
+* String getUsername();
+* boolean isAccountNonExpired();
+* boolean isAccountNonLocked();
+* boolean isCredentialsNonExpired();
+* boolean isEnabled();
+
+```java
+public class User implements UserDetails {
+
+    @Id @GeneratedValue
+    private Long id;
+
+    @NonNull
+    @Size(min = 8, max = 20)
+    @Column(nullable = false, unique = true)
+    private String email;
+    @NonNull
+
+    @Column(length = 100)
+    private String password;
+
+    @NonNull
+    @Column(nullable = false)
+    private boolean enabled;
+
+    @ManyToMany(fetch = FetchType.EAGER)
+    @JoinTable(
+            name = "users_roles",
+            joinColumns = @JoinColumn(name = "user_id",referencedColumnName = "id"),
+            inverseJoinColumns = @JoinColumn(name = "role_id",referencedColumnName = "id")
+    )
+    private Set<Role> roles = new HashSet<>();
+
+    @Override
+    public Collection<? extends GrantedAuthority> getAuthorities() {
+        return roles.stream().map(role -> new SimpleGrantedAuthority(role.getName())).collect(Collectors.toList());
+    }
+
+    public void addRole(Role role) {
+        roles.add(role);
+    }
+
+    public void addRoles(Set<Role> roles) {
+        roles.forEach(this::addRole);
+    }
+
+    @Override
+    public String getUsername() {
+        return email;
+    }
+
+    @Override
+    public boolean isAccountNonExpired() {
+        return true;
+    }
+
+    @Override
+    public boolean isAccountNonLocked() {
+        return true;
+    }
+
+    @Override
+    public boolean isCredentialsNonExpired() {
+        return true;
+    }
+
+    @Override
+    public boolean isEnabled() {
+        return enabled;
+    }
+}
+```
+
+**Authorization: Role**
+
+To make sure our user has access to something we will be creating a role class. This is simple class that contains the role name. When this is in place each user will have 1 or more roles that allow them to access certain parts of our application. For instance: 
+
+* A user must contain the `ROLE_USER` role to add a comment
+* A user must contain the `ROLE_USER` role to add a new link
+* A user must contain the `ROLE_USER` role to vote on a link
+* A user must contain the `ROLE_ADMIN` role to view actuator endpoints
+* etc...
+
+```java
+public class Role {
+
+    @Id
+    @GeneratedValue
+    private Long id;
+
+    @NonNull
+    private String name;
+
+    @ManyToMany( mappedBy = "roles")
+    private Collection<User> users;
+
+}
+```
+
+===== User & Role Repositories
+
+We will also create a User & Role Repository.
+
+```java
+public interface UserRepository extends JpaRepository<User,Long> {
+
+}
+```
+
+```java
+public interface RoleRepository extends JpaRepository<Role,Long> {
+}
+```
+
+==== User Details Service
+
+Core interface which loads user-specific data.It is used throughout the framework as a user DAO and is the strategy used by the DaoAuthenticationProvider.
+
+The first thing we need to do is to override the configure method from our `WebSecurityConfigurerAdapter`
+
+```java
+@Configuration
+@EnableWebSecurity
+public class SecurityConfiguration extends WebSecurityConfigurerAdapter {
+
+    private UserDetailsServiceImpl userDetailsService;
+
+    public SecurityConfiguration(UserDetailsServiceImpl userDetailsService) {
+        this.userDetailsService = userDetailsService;
+    }
+
+    @Override
+    protected void configure(HttpSecurity http) throws Exception {
+        ...
+    }
+
+    @Override
+    protected void configure(AuthenticationManagerBuilder auth) throws Exception {
+        auth.userDetailsService(userDetailsService);
+    }
+
+}
+```
+
+And then actually create the implementation. 
+
+```java
+@Service
+public class UserDetailsServiceImpl implements UserDetailsService {
+
+    private UserRepository userRepository;
+
+    public UserDetailsServiceImpl(UserRepository userRepository) {
+        this.userRepository = userRepository;
+    }
+
+    @Override
+    public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
+        Optional<User> user = userRepository.findByEmail(email);
+        if( !user.isPresent() ){
+            throw new UsernameNotFoundException(email);
+        }
+        return user.get();
+    }
+}
+```
+
+```java
+public interface UserRepository extends JpaRepository<User,Long> {
+    Optional<User> findByEmail(String email);
+}
+```
+
+==== DatabaseLoader - Adding Users & Roles
+
+Now that we have everything in place we can add some data for us to use in our development environment. Remember that I told you earlier that we can't store passwords in plain text, instead we encrypt them so that unwanted eyes can't see our passwords. Instead of a password of `password` in the database you will see something like this. 
+
+```
+$2a$10$XPvPcEZrjS35pYtF8M/Q4ewkXkovcB5oiEHi8Uehljkum1tzGr0NG
+```
+
+There are a few password encoders supported by Spring Security but in this example we will be using `BCrypt`. In the past we had to pass in a salt when encoding the password but BCrypt will generate a random salt for us. The Spring Security team announced that the PasswordEncoder in org.springframework.security.authentication.encoding as deprecated. The password encoder in `org.springframework.security.crypto.password` is what our BCrypt encoder is now using. 
+
+```java
+/**
+ * Service interface for encoding passwords.
+ *
+ * The preferred implementation is {@code BCryptPasswordEncoder}.
+ *
+ * @author Keith Donald
+ */
+public interface PasswordEncoder {
+
+	/**
+	 * Encode the raw password. Generally, a good encoding algorithm applies a SHA-1 or
+	 * greater hash combined with an 8-byte or greater randomly generated salt.
+	 */
+	String encode(CharSequence rawPassword);
+
+	/**
+	 * Verify the encoded password obtained from storage matches the submitted raw
+	 * password after it too is encoded. Returns true if the passwords match, false if
+	 * they do not. The stored password itself is never decoded.
+	 *
+	 * @param rawPassword the raw password to encode and match
+	 * @param encodedPassword the encoded password from storage to compare with
+	 * @return true if the raw password, after encoding, matches the encoded password from
+	 * storage
+	 */
+	boolean matches(CharSequence rawPassword, String encodedPassword);
+
+}
+```
+
+In the past you could only use a single password encoding algorithm. Spring Security 5 introduced the concept of password encoding delegation. We can no offer encoding passwords using different algorithms. The way that Spring Security recognizes which algorithm you're using is by prefixing the password with the encoder. Because we are using BCrypt we will end up storing our passwords in the database like this. 
+
+```
+{bcrypt}$2a$10$XPvPcEZrjS35pYtF8M/Q4ewkXkovcB5oiEHi8Uehljkum1tzGr0NG
+```
+
+If the password hash has no prefix, Spring Security will use the default `StandardPasswordEncoder`.
+
+
+```java
+private void addUsersAndRoles() {
+    BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
+    String secret = "{bcrypt}" + encoder.encode("password");
+
+    Role userRole = new Role("ROLE_USER");
+    roleRepository.save(userRole);
+    Role adminRole = new Role("ROLE_ADMIN");
+    roleRepository.save(adminRole);
+
+    User user = new User("user@gmail.com",secret,true);
+    user.addRole(userRole);
+    userRepository.save(user);
+
+    User admin = new User("admin@gmail.com",secret,true);
+    admin.addRole(adminRole);
+    userRepository.save(admin);
+
+    User master = new User("super@gmail.com",secret,true);
+    master.addRoles(new HashSet<>(Arrays.asList(userRole,adminRole)));
+    userRepository.save(master);
+
+}
+```
+
+==== Auditing
+
+Now that we have security in place and we have some users and roles it's time we revisit something we did a little bit earlier. Remember when we created the Auditable domain class that all of our other domain classes extended? Well we have the created & last updated dates working but now its time we tackle the user fields. 
+
+To make this happen we are going to remove the `@EnableJpaAuditing` annotation from our main Application class.
+
+```java
+@SpringBootApplication
+@EnableJpaAuditing
+public class SpringitApplication {}
+```
+
+We are then going to create a new config package and a new class called JpaConfig. The auditorAwareRef configures the AuditorAware bean to be used to lookup the current principal.
+
+```java
+@Configuration
+@EnableJpaAuditing(auditorAwareRef = "auditorAware")
+public class JpaConfig {
+    @Bean
+    public AuditorAware<String> auditorAware() {
+        return new AuditorAwareImpl();
+    }
+}
+```
+
+Next we will create the `AuditorAwareImpl` bean. We are implementing the `AuditorAware` interface and will need to override a single method called getCurrentAuditor. This will allow us to get the username (email in our case) of the currently logged in user.
+
+```java
+public class AuditorAwareImpl implements AuditorAware<String> {
+    @Override
+    public Optional<String> getCurrentAuditor() {
+        return Optional.of(((User) SecurityContextHolder.getContext().getAuthentication().getPrincipal()).getEmail());
+    }
+}
+```
+
+If you try and run the application now you are going to run into some issues. Before reading any further do you know what is causing these issues? 
+
+The problem here is that we are trying to add some links in our `DatabaseLoader` CommandLineRunner. At this point in time there is no logged in user. To make this work for our development environment we need to check to see if there is no authenticated user and if there isn't hard code an admin user. 
+
+```java
+public class AuditorAwareImpl implements AuditorAware<String> {
+    @Override
+    public Optional<String> getCurrentAuditor() {
+        if(SecurityContextHolder.getContext().getAuthentication() == null ) {
+            return Optional.of("admin@gmail.com");
+        } else {
+            return Optional.of(((User) SecurityContextHolder.getContext().getAuthentication().getPrincipal()).getEmail());
+        }
+    }
+}
+```
+
+
+==== Actuator Security
+
+Now that Spring Boot has backed off of Security we have a little bit of an issue with our actuator endpoints. Right now they are all wide open, so any user can get to them. In some cases this might be ok but in most it's probably not. Let's think about some rules that we want to incorporate for our actuator endpoints. 
+
+* The "info" endpoint should be available to anyone
+* The "/actuator" endpoint that lists all available endpoints should be locked down
+* All other endpoints should be locked down.
+* Only users with the ROLE_ADMIN should be able to view the secure data
+
+Spring Boot provides dedicated helpers to make your configuration more readable and explicit. For management endpoints and static resources, Spring Boot provides convenience factories that will supply the right RequestMatcher. For management endpoints, the RequestMatcher will be created based on the management.context-path. Using RequestMatchers gives users the flexibility to secure the application using existing Spring Security expressions such as permitAll, hasRole etc.
+
+```java
+@Override
+protected void configure(HttpSecurity http) throws Exception {
+    http
+        .authorizeRequests()
+            .requestMatchers(EndpointRequest.to("info")).permitAll()
+            .requestMatchers(EndpointRequest.toAnyEndpoint()).hasRole("ADMIN")
+            .antMatchers("/actuator/").hasRole("ACTUATOR")
+            .and()
+        .formLogin();
+}
+```
+
+The EndpointRequest is especially helpful given that we can change our endpoint mappings from /actuator to something else like /monitoring using the following configuration property. Now if we were to change that our http security stays the same! 
+
+```
+management.endpoints.web.base-path=/monitoring
+```
+
+The final thing we need to talk about is the health status endpoint. We have a property that allows us to show-details of the health endpoint. The important thing to remember here is that when_authorized can be any user that is authorized. That is why it's important to remember to lock that endpoint down to a specific role like we did above. 
+
+```
+management.endpoint.health.show-details=when_authorized
+```
+
+===== H2 Console
+
+If we try and go to our H2 Console (/h2-console) we won't be able to get there. We need to do a couple of things to make this work. First we need to allow anyone to access /h2-console/**. This is only being used for development so I am fine with this rule for now.  We also need to disable CSRF and X-Frame-Options because H2 database console runs inside of a frame.
+
+
+```java
+protected void configure(HttpSecurity http) throws Exception {
+    http
+        .authorizeRequests()
+            .requestMatchers(EndpointRequest.to("info")).permitAll()
+            .requestMatchers(EndpointRequest.toAnyEndpoint()).hasRole("ACTUATOR")
+            .antMatchers("/actuator/").hasRole("ACTUATOR")
+            .antMatchers("/link/submit").hasRole("USER")
+            .antMatchers("/link/**").permitAll()
+            .antMatchers("/").permitAll()
+            .antMatchers("/h2-console/**").permitAll()
+            .and()
+        .formLogin()
+            .and()
+        .csrf().disable()
+        .headers().frameOptions().disable();
+}
+```
+
+IMPORTANT: MAKE sure we have commits on our branch!
+
+==== Form Login & Logout
+
+You might be wondering where the login form came from when you were prompted to log in, since we made no mention of any HTML files or JSPs. Since Spring Security’s default configuration does not explicitly set a URL for the login page, Spring Security generates one automatically, based on the features that are enabled and using standard values for the URL which processes the submitted login, the default target URL the user will be sent to after logging in and so on.
+
+While the automatically generated log in page is convenient to get up and running quickly, most applications will want to provide their own log in page. To do so we can update our configuration as seen below:
+
+```java
+protected void configure(HttpSecurity http) throws Exception {
+    http
+        .authorizeRequests()
+            .anyRequest().authenticated()
+            .and()
+        .formLogin()
+            .loginPage("/login") // 1
+            .permitAll(); // 2
+}
+```
+
+1. The updated configuration specifies the location of the log in page.
+2. We must grant all users (i.e. unauthenticated users) access to our log in page. The formLogin().permitAll() method allows granting access to all users for all URLs associated with form based log in.
+
+Now we need to setup a request handler for /login. I am going to create an `AuthController` that looks like this.
+
+```java
+@Controller
+public class AuthController {
+
+    @GetMapping("/login")
+    public String login(){
+        return "auth/login";
+    }
+
+}
+```
+
+Next we need to update our login template to use our layout. This form contains all of the pieces we will need for our form.
+
+```html
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layouts/main_layout :: head(title = 'Springit - Login')}">
+</head>
+<body>
+
+    <nav th:replace="~{layouts/main_layout :: nav}"></nav>
+    <div th:replace="~{layouts/main_layout :: jumbotron}"></div>
+
+    <div class="container">
+
+        <!-- login -->
+        <form class="form-horizontal" role="form" method="POST" th:action="@{/login}">
+            <div class="row">
+                <div class="col-md-3"></div>
+                <div class="col-md-6">
+                    <h2>Please Login</h2>
+                    <hr>
+                    <div class="alert alert-danger" th:if="${param.error != null}">
+                        Invalid username and password.
+                    </div>
+                    <div class="alert alert-success" th:if="${param.logout != null}">
+                        You have been logged out.
+                    </div>
+                </div>
+                <div class="col-md-3"></div>
+            </div>
+            <div class="row">
+                <div class="col-md-3"></div>
+                <div class="col-md-6">
+                    <div class="form-group has-danger">
+                        <label class="sr-only" for="email">E-Mail Address</label>
+                        <div class="input-group mb-2 mr-sm-2 mb-sm-0">
+                            <div class="input-group-addon" style="width: 2.6rem"><i class="fa fa-at"></i></div>
+                            <input type="text" name="email" class="form-control" id="email" placeholder="you@example.com" required autofocus>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3"></div>
+            </div>
+            <div class="row">
+                <div class="col-md-3"></div>
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label class="sr-only" for="password">Password</label>
+                        <div class="input-group mb-2 mr-sm-2 mb-sm-0">
+                            <div class="input-group-addon" style="width: 2.6rem"><i class="fa fa-key"></i></div>
+                            <input type="password" name="password" class="form-control" id="password" placeholder="Password" required>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3"></div>
+            </div>
+            <div class="row">
+                <div class="col-md-3"></div>
+                <div class="col-md-6" style="padding-top: .35rem">
+                    <div class="form-check mb-2 mr-sm-2 mb-sm-0">
+                        <label class="form-check-label">
+                            <input id="remember-me" name="remember-me" class="form-check-input" type="checkbox" >
+                            <span style="padding-bottom: .15rem">Remember me</span>
+                        </label>
+                    </div>
+                </div>
+                <div class="col-md-3"></div>
+            </div>
+            <div class="row" style="padding-top: 1rem">
+                <div class="col-md-3"></div>
+                <div class="col-md-6">
+                    <button type="submit" class="btn btn-success"><i class="fas fa-sign-in-alt"></i> Login</button>
+                    <!-- <a class="btn btn-link" href="forgotPassword.html">Forgot Your Password?</a> -->
+                </div>
+                <div class="col-md-3"></div>
+            </div>
+        </form>
+
+    </div>
+
+</body>
+</html>
+```
+
+IMPORTANT: We turned off CSRF earlier for the H2 Console to work. We want this on, enable it and read more about it here https://docs.spring.io/spring-security/site/docs/current/reference/html/web-app-security.html#csrf-configure 
+
+===== Username & Password Form Parameters
+
+There is just one more step to do to make this all work. I bet you're probably thinking that we need to create a handler method for our login submit but we actually don't have to. Spring Security handles all of that for us. When we submit a form Spring Security is expecting 2 things from us: 
+
+* The username must be present as the HTTP parameter named username
+* The password must be present as the HTTP parameter named password
+
+Since our field is named "email" we just need to add one more configuration to our form login and that is `usernameParameter("email")`
+
+```java
+@Override
+protected void configure(HttpSecurity http) throws Exception {
+    http
+        .authorizeRequests()
+            .requestMatchers(EndpointRequest.to("info")).permitAll()
+            .requestMatchers(EndpointRequest.toAnyEndpoint()).hasRole("ACTUATOR")
+            .antMatchers("/actuator/").hasRole("ACTUATOR")
+            .antMatchers("/link/submit").hasRole("USER")
+            .antMatchers("/link/**").permitAll()
+            .antMatchers("/").permitAll()
+            .antMatchers("/h2-console/**").permitAll()
+            .and()
+        .formLogin()
+            .loginPage("/login").permitAll()
+            .usernameParameter("email");
+}
+```
+
+===== Form Logout
+
+When using the WebSecurityConfigurerAdapter, logout capabilities are automatically applied. The default is that accessing the URL /logout will log the user out by:
+
+* Invalidating the HTTP Session
+* Cleaning up any RememberMe authentication that was configured
+* Clearing the SecurityContextHolder
+* Redirect to /login?logout
+* Similar to configuring login capabilities, however, you also have various options to further customize your logout requirements:
+
+
+
+If you wanted to you could further customize the logout experience 
+
+```java
+protected void configure(HttpSecurity http) throws Exception {
+    http
+        .logout()
+            .logoutUrl("/my/logout")
+            .logoutSuccessUrl("/my/index")
+            .logoutSuccessHandler(logoutSuccessHandler)
+            .invalidateHttpSession(true)
+            .addLogoutHandler(logoutHandler)
+            .deleteCookies(cookieNamesToClear)
+            .and()
+        ...
+}
+```
+
+If you get a logout 404 error this is why https://docs.spring.io/spring-security/site/docs/current/reference/htmlsingle/#csrf-logout 
+
+image::logout_404.png[]
+
+I updated our main_layout to use a POST instead of a GET
+
+```html
+<li class="nav-item">
+    <form method="POST" th:action="@{/logout}">
+    <button class="nav-link"><i class="fa fa-sign-out-alt" aria-hidden="true"></i> Sign Out</button>
+    </form>
+</li>
+```
+
+And the logout started working just fine. 
+
+
+===== Remember Me
+
+Remember-me or persistent-login authentication refers to web sites being able to remember the identity of a principal between sessions. This is typically accomplished by sending a cookie to the browser, with the cookie being detected during future sessions and causing automated login to take place. Spring Security provides the necessary hooks for these operations to take place, and has two concrete remember-me implementations. One uses hashing to preserve the security of cookie-based tokens and the other uses a database or other persistent storage mechanism to store the generated tokens.
+
+Learn more about both approaches to remember-me: 
+
+https://docs.spring.io/spring-security/site/docs/5.1.1.RELEASE/reference/htmlsingle/#remember-me
+
+
+==== Thymeleaf + Spring Security
+
+In Spring MVC environments, the https://github.com/thymeleaf/thymeleaf-extras-springsecurity[Spring Security integration module] works as a replacement of the Spring security taglib.
+
+We use this dialect in the example in order to print the logged user credentials and to show different content to different roles.
+
+The sec:authorize attribute renders its content when the attribute expression is evaluated to true:
+
+```html
+<div sec:authorize="isAuthenticated()">
+  This content is only shown to authenticated users.
+</div>
+<div sec:authorize="hasRole('ROLE_ADMIN')">
+  This content is only shown to administrators.
+</div>
+<div sec:authorize="hasRole('ROLE_USER')">
+  This content is only shown to users.
+</div>
+```
+
+The sec:authentication attribute is used to print logged user name and roles:
+
+```html
+Logged user: <span sec:authentication="name">Bob</span>
+Roles: <span sec:authentication="principal.authorities">[ROLE_USER, ROLE_ADMIN]</span>
+```
+
+===== Getting Started
+
+This is one of the first dependencies that we will come across that isn't in the Spring Initializer and will need to be added manually. It also worth pointing out that this isn't officially a part of the Thymeleaf project. 
+
+```
+<dependency>
+    <groupId>org.thymeleaf.extras</groupId>
+    <artifactId>thymeleaf-extras-springsecurity5</artifactId>
+    <version>3.0.4.RELEASE</version>
+</dependency>
+```
+
+IMPORTANT: There is something you will need to do for now to get the dialect working. If you're on Spring Boot 2 and Spring Security 5 you will need to include this in your main application class until Spring Boot's starter includes it. 
+
+```java
+// TODO * Configuring this bean should not be needed once Spring Boot's Thymeleaf starter includes configuration
+// TODO   for thymeleaf-extras-springsecurity5 (instead of thymeleaf-extras-springsecurity4)
+@Bean
+public SpringSecurityDialect securityDialect() {
+    return new SpringSecurityDialect();
+}
+```
+
+Anywhere that we are going to use the Spring Security Thymeleaf extras we will need to use the correct namespace. 
+
+```html
+<html xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+```
+
+Now, lets update our main layout so only certain buttons are shown when we are logged in. 
+
+
+```html
+<!-- if user is signed in -->
+<li class="nav-item" sec:authorize="isAuthenticated()">
+    <a class="nav-link" th:href="@{/link/submit}">
+        <i class="fa fa-link" aria-hidden="true"></i> Submit Link</a>
+</li>
+<li class="nav-item" sec:authorize="isAuthenticated()">
+    <a class="nav-link" th:href="@{/profile}">
+        <i class="fa fa-user" aria-hidden="true"></i> Account</a>
+</li>
+<li class="nav-item">
+    <form method="POST" th:action="@{/logout}" sec:authorize="isAuthenticated()">
+    <button class="nav-link"><i class="fa fa-sign-out-alt" aria-hidden="true"></i> Sign Out</button>
+    </form>
+</li>
+
+<!-- if user is not signed in -->
+<li class="nav-item" sec:authorize="!isAuthenticated()">
+    <a class="nav-link" th:href="@{/login}">
+        <i class="fa fa-sign-in-alt" aria-hidden="true"></i> Sign In</a>
+</li>
+<li class="nav-item" sec:authorize="!isAuthenticated()">
+    <a class="nav-link" th:href="@{/register}">
+        <i class="fa fa-user-plus" aria-hidden="true"></i> Register</a>
+</li>
+```
+
