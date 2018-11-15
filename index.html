@@ -570,8 +570,11 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <li><a href="#_databaseloader_adding_users_roles">DatabaseLoader - Adding Users &amp; Roles</a></li>
 <li><a href="#_auditing_2">Auditing</a></li>
 <li><a href="#_actuator_security">Actuator Security</a></li>
+<li><a href="#_spring_security_the_view_layer">Spring Security: The View Layer</a></li>
 <li><a href="#_form_login_logout">Form Login &amp; Logout</a></li>
 <li><a href="#_thymeleaf_spring_security">Thymeleaf + Spring Security</a></li>
+<li><a href="#_who_submitted_the_link">Who Submitted the link</a></li>
+<li><a href="#_account_registration">Account &amp; Registration</a></li>
 </ul>
 </li>
 <li><a href="#_spring_mvc_the_service_layer">Spring MVC: The Service Layer</a></li>
@@ -4754,7 +4757,7 @@ public class JpaConfig {
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code>@Override
+<pre class="highlight"><code class="language-java" data-lang="java">@Override
 protected void configure(HttpSecurity http) throws Exception {
     http
         .authorizeRequests()
@@ -4819,6 +4822,43 @@ MAKE sure we have commits on our branch!
 </tr>
 </table>
 </div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_spring_security_the_view_layer">Spring Security: The View Layer</h4>
+<div class="paragraph">
+<p>What we looked at in the last section was how to configure Spring Security. Now that we have a head start on security it&#8217;s time we integrate into our view layer. Here is what we are going to cover in this section:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Custom Login Form</p>
+</li>
+<li>
+<p>Form Login and Logout</p>
+</li>
+<li>
+<p>Remember Me Feature</p>
+</li>
+<li>
+<p>Thymeleaf Spring Security Dialect</p>
+</li>
+<li>
+<p>Account &amp; Registration Templates</p>
+</li>
+</ul>
+</div>
+<div class="admonitionblock important">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-important" title="Important"></i>
+</td>
+<td class="content">
+We are going to keep the same branch, so don&#8217;t go merging just yet!
+</td>
+</tr>
+</table>
 </div>
 </div>
 <div class="sect3">
@@ -5069,6 +5109,18 @@ protected void configure(HttpSecurity http) throws Exception {
 </div>
 </div>
 <div class="paragraph">
+<p>Fixing our button style</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code>button.nav-link {
+    background: #2D2A27;
+    border:none;
+    cursor: pointer;
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
 <p>And the logout started working just fine.</p>
 </div>
 </div>
@@ -5082,6 +5134,33 @@ protected void configure(HttpSecurity http) throws Exception {
 </div>
 <div class="paragraph">
 <p><a href="https://docs.spring.io/spring-security/site/docs/5.1.1.RELEASE/reference/htmlsingle/#remember-me" class="bare">https://docs.spring.io/spring-security/site/docs/5.1.1.RELEASE/reference/htmlsingle/#remember-me</a></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-java" data-lang="java">protected void configure(HttpSecurity http) throws Exception {
+    http
+        .authorizeRequests()
+            .requestMatchers(EndpointRequest.to("info")).permitAll()
+            .requestMatchers(EndpointRequest.toAnyEndpoint()).hasRole("ACTUATOR")
+            .antMatchers("/actuator/").hasRole("ACTUATOR")
+            .antMatchers("/link/submit").hasRole("USER")
+            .antMatchers("/link/**").permitAll()
+            .antMatchers("/").permitAll()
+            .antMatchers("/vote/**").permitAll()
+            .antMatchers("/h2-console/**").permitAll()
+            .and()
+        .formLogin()
+            .loginPage("/login").permitAll()
+            .usernameParameter("email")
+            .and()
+        .logout()
+            .and()
+        .rememberMe()
+            .and()
+        .csrf().disable()
+        .headers().frameOptions().disable();
+}</code></pre>
+</div>
 </div>
 </div>
 </div>
@@ -5192,6 +5271,323 @@ public SpringSecurityDialect securityDialect() {
         &lt;i class="fa fa-user-plus" aria-hidden="true"&gt;&lt;/i&gt; Register&lt;/a&gt;
 &lt;/li&gt;</code></pre>
 </div>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_who_submitted_the_link">Who Submitted the link</h4>
+<div class="paragraph">
+<p>One thing that I noticed is that we never updated the display to show who actually submitted the link. I will admit that not having a username or a full name on the User object is going to hurt us here. I wanted to try and keep this simple so we are just going to display the Audit information and use the email. I might come back and add this as an assignment for you to work on later.</p>
+</div>
+<div class="paragraph">
+<p>First we will need to update our home page to show the user who submitted the link.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-html" data-lang="html">&lt;p class="tagline "&gt;submitted
+    &lt;time th:title="${link.getCreationDate()}" th:datetime="${link.getCreationDate()}" class="live-timestamp" th:text="${link.getPrettyTime()}"&gt;1 hour(s)&lt;/time&gt; by
+    &lt;a href="/" class="author" th:text="${link.createdBy}"&gt;therealdanvega&lt;/a&gt;
+&lt;/p&gt;</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Then we also need to update this in the view link.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-html" data-lang="html">&lt;p class="tagline "&gt;submitted
+    &lt;time th:title="${link.getCreationDate()}" th:datetime="${link.getCreationDate()}" class="live-timestamp" th:text="${link.getPrettyTime()}"&gt;1 hour(s)&lt;/time&gt; by
+    &lt;a href="/" class="author" th:text="${link.createdBy}"&gt;therealdanvega&lt;/a&gt;
+    &lt;span class="userattrs"&gt;&lt;/span&gt;
+&lt;/p&gt;</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Again not ideal because its showing the email address but for simplicity sake we will keep it for now.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_account_registration">Account &amp; Registration</h4>
+<div class="paragraph">
+<p>When we updated the links in the navbar I added some routes to them. The account link goes to <code>/profile</code> and the Register link goes to <code>/register</code>.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-html" data-lang="html">&lt;li class="nav-item" sec:authorize="isAuthenticated()"&gt;
+    &lt;a class="nav-link" th:href="@{/profile}"&gt;
+        &lt;i class="fa fa-user" aria-hidden="true"&gt;&lt;/i&gt; Account&lt;/a&gt;
+&lt;/li&gt;
+&lt;li class="nav-item" sec:authorize="!isAuthenticated()"&gt;
+    &lt;a class="nav-link" th:href="@{/register}"&gt;
+        &lt;i class="fa fa-user-plus" aria-hidden="true"&gt;&lt;/i&gt; Register&lt;/a&gt;
+&lt;/li&gt;</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>We are going to need a couple of mappings for those and the <code>AuthController</code> seems like a good place to put them so let&#8217;s add these there:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-java" data-lang="java">@GetMapping("/profile")
+public String profile() {
+    return "auth/profile";
+}
+
+@GetMapping("/register")
+public String register() {
+    return "auth/register";
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>We just need to update those views so they use our layout. We aren&#8217;t going to make these actually work just yet, I just want them looking nice.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-html" data-lang="html">&lt;!DOCTYPE html&gt;
+&lt;html lang="en" xmlns:th="http://www.thymeleaf.org"&gt;
+&lt;head th:replace="~{layouts/main_layout :: head(title = 'Springit - Account Profile Page')}"&gt;
+&lt;/head&gt;
+&lt;body&gt;
+
+    &lt;nav th:replace="~{layouts/main_layout :: nav}"&gt;&lt;/nav&gt;
+    &lt;div th:replace="~{layouts/main_layout :: jumbotron}"&gt;&lt;/div&gt;
+
+    &lt;!-- profile --&gt;
+    &lt;div id="profile" class="container"&gt;
+
+        &lt;div class="row"&gt;
+            &lt;ul class="nav"&gt;
+                &lt;li class="nav-item"&gt;
+                    &lt;a class="nav-link active" href="#"&gt;Overview&lt;/a&gt;
+                &lt;/li&gt;
+                &lt;li class="nav-item"&gt;
+                    &lt;a class="nav-link" href="#"&gt;Posts&lt;/a&gt;
+                &lt;/li&gt;
+                &lt;li class="nav-item"&gt;
+                    &lt;a class="nav-link" href="#"&gt;Comments&lt;/a&gt;
+                &lt;/li&gt;
+                &lt;li class="nav-item"&gt;
+                    &lt;a class="nav-link" href="#"&gt;Preferences&lt;/a&gt;
+                &lt;/li&gt;
+            &lt;/ul&gt;
+        &lt;/div&gt;
+
+        &lt;div class="row"&gt;
+
+            &lt;div class="col-8"&gt;
+                &lt;div class="row"&gt;
+                    &lt;div class="card col-12" style="width: 18rem;"&gt;
+                        &lt;div class="card-body"&gt;
+                            &lt;h5 class="card-title"&gt;What's new in Spring Boot 2&lt;/h5&gt;
+                            &lt;h6 class="card-subtitle mb-2 text-muted"&gt;submitted 7 days ago by therealdanvega&lt;/h6&gt;
+                            &lt;p class="card-text"&gt;Some quick example text to build on the card title and make up the bulk of the card's content.&lt;/p&gt;
+                            &lt;a href="#" class="card-link"&gt;8 Comments&lt;/a&gt;
+                            &lt;a href="#" class="card-link"&gt;Share&lt;/a&gt;
+                        &lt;/div&gt;
+                    &lt;/div&gt;
+                &lt;/div&gt;
+                &lt;div class="row"&gt;
+                    &lt;div class="card col-12" style="width: 18rem;"&gt;
+                        &lt;div class="card-body"&gt;
+                            &lt;h5 class="card-title"&gt;What's new in Spring Boot 2&lt;/h5&gt;
+                            &lt;h6 class="card-subtitle mb-2 text-muted"&gt;submitted 7 days ago by therealdanvega&lt;/h6&gt;
+                            &lt;p class="card-text"&gt;Some quick example text to build on the card title and make up the bulk of the card's content.&lt;/p&gt;
+                            &lt;a href="#" class="card-link"&gt;8 Comments&lt;/a&gt;
+                            &lt;a href="#" class="card-link"&gt;Share&lt;/a&gt;
+                        &lt;/div&gt;
+                    &lt;/div&gt;
+                &lt;/div&gt;
+                &lt;div class="row"&gt;
+                    &lt;div class="card col-12" style="width: 18rem;"&gt;
+                        &lt;div class="card-body"&gt;
+                            &lt;h5 class="card-title"&gt;What's new in Spring Boot 2&lt;/h5&gt;
+                            &lt;h6 class="card-subtitle mb-2 text-muted"&gt;submitted 7 days ago by therealdanvega&lt;/h6&gt;
+                            &lt;p class="card-text"&gt;Some quick example text to build on the card title and make up the bulk of the card's content.&lt;/p&gt;
+                            &lt;a href="#" class="card-link"&gt;8 Comments&lt;/a&gt;
+                            &lt;a href="#" class="card-link"&gt;Share&lt;/a&gt;
+                        &lt;/div&gt;
+                    &lt;/div&gt;
+                &lt;/div&gt;
+                &lt;div class="row"&gt;
+                    &lt;div class="card col-12" style="width: 18rem;"&gt;
+                        &lt;div class="card-body"&gt;
+                            &lt;h5 class="card-title"&gt;What's new in Spring Boot 2&lt;/h5&gt;
+                            &lt;h6 class="card-subtitle mb-2 text-muted"&gt;submitted 7 days ago by therealdanvega&lt;/h6&gt;
+                            &lt;p class="card-text"&gt;Some quick example text to build on the card title and make up the bulk of the card's content.&lt;/p&gt;
+                            &lt;a href="#" class="card-link"&gt;8 Comments&lt;/a&gt;
+                            &lt;a href="#" class="card-link"&gt;Share&lt;/a&gt;
+                        &lt;/div&gt;
+                    &lt;/div&gt;
+                &lt;/div&gt;
+                &lt;div class="row"&gt;
+                    &lt;div class="card col-12" style="width: 18rem;"&gt;
+                        &lt;div class="card-body"&gt;
+                            &lt;h5 class="card-title"&gt;What's new in Spring Boot 2&lt;/h5&gt;
+                            &lt;h6 class="card-subtitle mb-2 text-muted"&gt;submitted 7 days ago by therealdanvega&lt;/h6&gt;
+                            &lt;p class="card-text"&gt;Some quick example text to build on the card title and make up the bulk of the card's content.&lt;/p&gt;
+                            &lt;a href="#" class="card-link"&gt;8 Comments&lt;/a&gt;
+                            &lt;a href="#" class="card-link"&gt;Share&lt;/a&gt;
+                        &lt;/div&gt;
+                    &lt;/div&gt;
+                &lt;/div&gt;
+            &lt;/div&gt;
+            &lt;!-- Right Side --&gt;
+            &lt;div class="col-3 offset-1"&gt;
+                &lt;div class="row"&gt;
+                    &lt;div class="card col-12"&gt;
+                        &lt;img class="card-img-top" th:src="@{/images/profile_small.png}" alt="Card image cap"&gt;
+                        &lt;div class="card-body"&gt;
+                            &lt;p class="card-text"&gt;
+                                &lt;a href="/u/therealdanvega"&gt;/u/therealdanvega&lt;/a&gt;
+                            &lt;/p&gt;
+                            &lt;a href="../link/submit.html"&gt;&lt;button type="button" class="btn btn-primary btn-lg btn-block"&gt;New Post&lt;/button&gt;&lt;/a&gt;
+                        &lt;/div&gt;
+                    &lt;/div&gt;
+                &lt;/div&gt;
+                &lt;div class="row"&gt;
+                    &lt;div class="card col-12"&gt;
+                        &lt;!-- &lt;img class="card-img-top" src="..." alt="Card image cap"&gt; --&gt;
+                        &lt;div class="card-body"&gt;
+                            &lt;h5 class="card-title"&gt;Your Information&lt;/h5&gt;
+                            &lt;p class="card-text"&gt;
+                                Posts: 10&lt;br/&gt;
+                                Comments: 3&lt;br/&gt;
+                                User Since: November 23, 2017&lt;br/&gt;
+                            &lt;/p&gt;
+                        &lt;/div&gt;
+                    &lt;/div&gt;
+                &lt;/div&gt;
+                &lt;div class="row"&gt;
+                    &lt;div class="card col-12"&gt;
+                        &lt;h5 class="card-title recentLinks"&gt;Recent Links Clicked&lt;/h5&gt;
+                        &lt;ul class="list-group list-group-flush"&gt;
+                            &lt;li class="list-group-item"&gt;&lt;a href="#"&gt;What's new in Spring Boot 2&lt;/a&gt;&lt;/li&gt;
+                            &lt;li class="list-group-item"&gt;&lt;a href="#"&gt;10 Features in Java 10&lt;/a&gt;&lt;/li&gt;
+                            &lt;li class="list-group-item"&gt;&lt;a href="#"&gt;9 Features in Java 9&lt;/a&gt;&lt;/li&gt;
+                            &lt;li class="list-group-item"&gt;&lt;a href="#"&gt;8 Features in Java 8&lt;/a&gt;&lt;/li&gt;
+                            &lt;li class="list-group-item"&gt;&lt;a href="#"&gt;7 Reasons not to use Java 7&lt;/a&gt;&lt;/li&gt;
+                        &lt;/ul&gt;
+                    &lt;/div&gt;
+                &lt;/div&gt;
+            &lt;/div&gt;
+
+        &lt;/div&gt; &lt;!-- // row --&gt;
+
+    &lt;/div&gt;&lt;!-- // profile --&gt;
+
+&lt;/body&gt;
+&lt;/html&gt;</code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-html" data-lang="html">&lt;!DOCTYPE html&gt;
+&lt;html lang="en" xmlns:th="http://www.thymeleaf.org"&gt;
+&lt;head th:replace="~{layouts/main_layout :: head(title = 'Springit - Register for an account')}"&gt;
+&lt;/head&gt;
+&lt;body&gt;
+    &lt;nav th:replace="~{layouts/main_layout :: nav}"&gt;&lt;/nav&gt;
+    &lt;div th:replace="~{layouts/main_layout :: jumbotron}"&gt;&lt;/div&gt;
+
+    &lt;!-- User Registration form --&gt;
+    &lt;form class="form-horizontal" role="form" method="POST" action=""&gt;
+        &lt;div class="row"&gt;
+            &lt;div class="col-md-3"&gt;&lt;/div&gt;
+            &lt;div class="col-md-6"&gt;
+                &lt;h2&gt;Register New User&lt;/h2&gt;
+                &lt;hr&gt;
+            &lt;/div&gt;
+        &lt;/div&gt;
+        &lt;div class="row"&gt;
+            &lt;div class="col-md-3 field-label-responsive"&gt;
+                &lt;label for="name"&gt;Name&lt;/label&gt;
+            &lt;/div&gt;
+            &lt;div class="col-md-6"&gt;
+                &lt;div class="form-group"&gt;
+                    &lt;div class="input-group mb-2 mr-sm-2 mb-sm-0"&gt;
+                        &lt;div class="input-group-addon" style="width: 2.6rem"&gt;&lt;i class="fa fa-user"&gt;&lt;/i&gt;&lt;/div&gt;
+                        &lt;input type="text" name="name" class="form-control" id="name"
+                               placeholder="John Doe" required autofocus&gt;
+                    &lt;/div&gt;
+                &lt;/div&gt;
+            &lt;/div&gt;
+            &lt;div class="col-md-3"&gt;
+                &lt;div class="form-control-feedback"&gt;
+                            &lt;span class="text-danger align-middle"&gt;
+                                &lt;!-- Put name validation error messages here --&gt;
+                            &lt;/span&gt;
+                &lt;/div&gt;
+            &lt;/div&gt;
+        &lt;/div&gt;
+        &lt;div class="row"&gt;
+            &lt;div class="col-md-3 field-label-responsive"&gt;
+                &lt;label for="email"&gt;E-Mail Address&lt;/label&gt;
+            &lt;/div&gt;
+            &lt;div class="col-md-6"&gt;
+                &lt;div class="form-group"&gt;
+                    &lt;div class="input-group mb-2 mr-sm-2 mb-sm-0"&gt;
+                        &lt;div class="input-group-addon" style="width: 2.6rem"&gt;&lt;i class="fa fa-at"&gt;&lt;/i&gt;&lt;/div&gt;
+                        &lt;input type="text" name="email" class="form-control" id="email"
+                               placeholder="you@example.com" required autofocus&gt;
+                    &lt;/div&gt;
+                &lt;/div&gt;
+            &lt;/div&gt;
+            &lt;div class="col-md-3"&gt;
+                &lt;div class="form-control-feedback"&gt;
+                            &lt;span class="text-danger align-middle"&gt;
+                                &lt;!-- Put e-mail validation error messages here --&gt;
+                            &lt;/span&gt;
+                &lt;/div&gt;
+            &lt;/div&gt;
+        &lt;/div&gt;
+        &lt;div class="row"&gt;
+            &lt;div class="col-md-3 field-label-responsive"&gt;
+                &lt;label for="password"&gt;Password&lt;/label&gt;
+            &lt;/div&gt;
+            &lt;div class="col-md-6"&gt;
+                &lt;div class="form-group has-danger"&gt;
+                    &lt;div class="input-group mb-2 mr-sm-2 mb-sm-0"&gt;
+                        &lt;div class="input-group-addon" style="width: 2.6rem"&gt;&lt;i class="fas fa-key"&gt;&lt;/i&gt;&lt;/div&gt;
+                        &lt;input type="password" name="password" class="form-control" id="password"
+                               placeholder="Password" required&gt;
+                    &lt;/div&gt;
+                &lt;/div&gt;
+            &lt;/div&gt;
+            &lt;div class="col-md-3"&gt;
+                &lt;div class="form-control-feedback"&gt;
+                            &lt;span class="text-danger align-middle"&gt;
+                                Example Error Message
+                            &lt;/span&gt;
+                &lt;/div&gt;
+            &lt;/div&gt;
+        &lt;/div&gt;
+        &lt;div class="row"&gt;
+            &lt;div class="col-md-3 field-label-responsive"&gt;
+                &lt;label for="password"&gt;Confirm Password&lt;/label&gt;
+            &lt;/div&gt;
+            &lt;div class="col-md-6"&gt;
+                &lt;div class="form-group"&gt;
+                    &lt;div class="input-group mb-2 mr-sm-2 mb-sm-0"&gt;
+                        &lt;div class="input-group-addon" style="width: 2.6rem"&gt;
+                            &lt;i class="fas fa-key"&gt;&lt;/i&gt;
+                        &lt;/div&gt;
+                        &lt;input type="password" name="password-confirmation" class="form-control"
+                               id="password-confirm" placeholder="Password" required&gt;
+                    &lt;/div&gt;
+                &lt;/div&gt;
+            &lt;/div&gt;
+        &lt;/div&gt;
+        &lt;div class="row"&gt;
+            &lt;div class="col-md-3"&gt;&lt;/div&gt;
+            &lt;div class="col-md-6"&gt;
+                &lt;button type="submit" class="btn btn-success"&gt;&lt;i class="fa fa-user-plus"&gt;&lt;/i&gt; Register&lt;/button&gt;
+            &lt;/div&gt;
+        &lt;/div&gt;
+    &lt;/form&gt;
+
+&lt;/body&gt;
+&lt;/html&gt;</code></pre>
 </div>
 </div>
 </div>

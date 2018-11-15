@@ -510,6 +510,18 @@ protected void configure(HttpSecurity http) throws Exception {
 
 IMPORTANT: MAKE sure we have commits on our branch!
 
+==== Spring Security: The View Layer
+
+What we looked at in the last section was how to configure Spring Security. Now that we have a head start on security it's time we integrate into our view layer. Here is what we are going to cover in this section:
+
+* Custom Login Form
+* Form Login and Logout
+* Remember Me Feature
+* Thymeleaf Spring Security Dialect
+* Account & Registration Templates
+
+IMPORTANT: We are going to keep the same branch, so don't go merging just yet!
+
 ==== Form Login & Logout
 
 You might be wondering where the login form came from when you were prompted to log in, since we made no mention of any HTML files or JSPs. Since Spring Security’s default configuration does not explicitly set a URL for the login page, Spring Security generates one automatically, based on the features that are enabled and using standard values for the URL which processes the submitted login, the default target URL the user will be sent to after logging in and so on.
@@ -702,6 +714,16 @@ I updated our main_layout to use a POST instead of a GET
 </li>
 ```
 
+Fixing our button style 
+
+```
+button.nav-link {
+    background: #2D2A27;
+    border:none;
+    cursor: pointer;
+}
+```
+
 And the logout started working just fine. 
 
 
@@ -712,6 +734,32 @@ Remember-me or persistent-login authentication refers to web sites being able to
 Learn more about both approaches to remember-me: 
 
 https://docs.spring.io/spring-security/site/docs/5.1.1.RELEASE/reference/htmlsingle/#remember-me
+
+```java
+protected void configure(HttpSecurity http) throws Exception {
+    http
+        .authorizeRequests()
+            .requestMatchers(EndpointRequest.to("info")).permitAll()
+            .requestMatchers(EndpointRequest.toAnyEndpoint()).hasRole("ACTUATOR")
+            .antMatchers("/actuator/").hasRole("ACTUATOR")
+            .antMatchers("/link/submit").hasRole("USER")
+            .antMatchers("/link/**").permitAll()
+            .antMatchers("/").permitAll()
+            .antMatchers("/vote/**").permitAll()
+            .antMatchers("/h2-console/**").permitAll()
+            .and()
+        .formLogin()
+            .loginPage("/login").permitAll()
+            .usernameParameter("email")
+            .and()
+        .logout()
+            .and()
+        .rememberMe()
+            .and()
+        .csrf().disable()
+        .headers().frameOptions().disable();
+}
+```
 
 
 ==== Thymeleaf + Spring Security
@@ -799,4 +847,308 @@ Now, lets update our main layout so only certain buttons are shown when we are l
         <i class="fa fa-user-plus" aria-hidden="true"></i> Register</a>
 </li>
 ```
+
+==== Who Submitted the link
+
+One thing that I noticed is that we never updated the display to show who actually submitted the link. I will admit that not having a username or a full name on the User object is going to hurt us here. I wanted to try and keep this simple so we are just going to display the Audit information and use the email. I might come back and add this as an assignment for you to work on later.
+
+First we will need to update our home page to show the user who submitted the link. 
+
+```html
+<p class="tagline ">submitted
+    <time th:title="${link.getCreationDate()}" th:datetime="${link.getCreationDate()}" class="live-timestamp" th:text="${link.getPrettyTime()}">1 hour(s)</time> by
+    <a href="/" class="author" th:text="${link.createdBy}">therealdanvega</a>
+</p>
+```
+
+Then we also need to update this in the view link. 
+
+```html
+<p class="tagline ">submitted
+    <time th:title="${link.getCreationDate()}" th:datetime="${link.getCreationDate()}" class="live-timestamp" th:text="${link.getPrettyTime()}">1 hour(s)</time> by
+    <a href="/" class="author" th:text="${link.createdBy}">therealdanvega</a>
+    <span class="userattrs"></span>
+</p>
+```
+
+Again not ideal because its showing the email address but for simplicity sake we will keep it for now. 
+
+==== Account & Registration
+
+When we updated the links in the navbar I added some routes to them. The account link goes to `/profile` and the Register link goes to `/register`. 
+
+```html
+<li class="nav-item" sec:authorize="isAuthenticated()">
+    <a class="nav-link" th:href="@{/profile}">
+        <i class="fa fa-user" aria-hidden="true"></i> Account</a>
+</li>
+<li class="nav-item" sec:authorize="!isAuthenticated()">
+    <a class="nav-link" th:href="@{/register}">
+        <i class="fa fa-user-plus" aria-hidden="true"></i> Register</a>
+</li>
+```
+
+We are going to need a couple of mappings for those and the `AuthController` seems like a good place to put them so let's add these there:
+
+```java
+@GetMapping("/profile")
+public String profile() {
+    return "auth/profile";
+}
+
+@GetMapping("/register")
+public String register() {
+    return "auth/register";
+}
+```
+
+We just need to update those views so they use our layout. We aren't going to make these actually work just yet, I just want them looking nice.
+
+```html
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layouts/main_layout :: head(title = 'Springit - Account Profile Page')}">
+</head>
+<body>
+
+    <nav th:replace="~{layouts/main_layout :: nav}"></nav>
+    <div th:replace="~{layouts/main_layout :: jumbotron}"></div>
+
+    <!-- profile -->
+    <div id="profile" class="container">
+
+        <div class="row">
+            <ul class="nav">
+                <li class="nav-item">
+                    <a class="nav-link active" href="#">Overview</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="#">Posts</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="#">Comments</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="#">Preferences</a>
+                </li>
+            </ul>
+        </div>
+
+        <div class="row">
+
+            <div class="col-8">
+                <div class="row">
+                    <div class="card col-12" style="width: 18rem;">
+                        <div class="card-body">
+                            <h5 class="card-title">What's new in Spring Boot 2</h5>
+                            <h6 class="card-subtitle mb-2 text-muted">submitted 7 days ago by therealdanvega</h6>
+                            <p class="card-text">Some quick example text to build on the card title and make up the bulk of the card's content.</p>
+                            <a href="#" class="card-link">8 Comments</a>
+                            <a href="#" class="card-link">Share</a>
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="card col-12" style="width: 18rem;">
+                        <div class="card-body">
+                            <h5 class="card-title">What's new in Spring Boot 2</h5>
+                            <h6 class="card-subtitle mb-2 text-muted">submitted 7 days ago by therealdanvega</h6>
+                            <p class="card-text">Some quick example text to build on the card title and make up the bulk of the card's content.</p>
+                            <a href="#" class="card-link">8 Comments</a>
+                            <a href="#" class="card-link">Share</a>
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="card col-12" style="width: 18rem;">
+                        <div class="card-body">
+                            <h5 class="card-title">What's new in Spring Boot 2</h5>
+                            <h6 class="card-subtitle mb-2 text-muted">submitted 7 days ago by therealdanvega</h6>
+                            <p class="card-text">Some quick example text to build on the card title and make up the bulk of the card's content.</p>
+                            <a href="#" class="card-link">8 Comments</a>
+                            <a href="#" class="card-link">Share</a>
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="card col-12" style="width: 18rem;">
+                        <div class="card-body">
+                            <h5 class="card-title">What's new in Spring Boot 2</h5>
+                            <h6 class="card-subtitle mb-2 text-muted">submitted 7 days ago by therealdanvega</h6>
+                            <p class="card-text">Some quick example text to build on the card title and make up the bulk of the card's content.</p>
+                            <a href="#" class="card-link">8 Comments</a>
+                            <a href="#" class="card-link">Share</a>
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="card col-12" style="width: 18rem;">
+                        <div class="card-body">
+                            <h5 class="card-title">What's new in Spring Boot 2</h5>
+                            <h6 class="card-subtitle mb-2 text-muted">submitted 7 days ago by therealdanvega</h6>
+                            <p class="card-text">Some quick example text to build on the card title and make up the bulk of the card's content.</p>
+                            <a href="#" class="card-link">8 Comments</a>
+                            <a href="#" class="card-link">Share</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- Right Side -->
+            <div class="col-3 offset-1">
+                <div class="row">
+                    <div class="card col-12">
+                        <img class="card-img-top" th:src="@{/images/profile_small.png}" alt="Card image cap">
+                        <div class="card-body">
+                            <p class="card-text">
+                                <a href="/u/therealdanvega">/u/therealdanvega</a>
+                            </p>
+                            <a href="../link/submit.html"><button type="button" class="btn btn-primary btn-lg btn-block">New Post</button></a>
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="card col-12">
+                        <!-- <img class="card-img-top" src="..." alt="Card image cap"> -->
+                        <div class="card-body">
+                            <h5 class="card-title">Your Information</h5>
+                            <p class="card-text">
+                                Posts: 10<br/>
+                                Comments: 3<br/>
+                                User Since: November 23, 2017<br/>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="card col-12">
+                        <h5 class="card-title recentLinks">Recent Links Clicked</h5>
+                        <ul class="list-group list-group-flush">
+                            <li class="list-group-item"><a href="#">What's new in Spring Boot 2</a></li>
+                            <li class="list-group-item"><a href="#">10 Features in Java 10</a></li>
+                            <li class="list-group-item"><a href="#">9 Features in Java 9</a></li>
+                            <li class="list-group-item"><a href="#">8 Features in Java 8</a></li>
+                            <li class="list-group-item"><a href="#">7 Reasons not to use Java 7</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+        </div> <!-- // row -->
+
+    </div><!-- // profile -->
+
+</body>
+</html>
+```
+
+```html
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layouts/main_layout :: head(title = 'Springit - Register for an account')}">
+</head>
+<body>
+    <nav th:replace="~{layouts/main_layout :: nav}"></nav>
+    <div th:replace="~{layouts/main_layout :: jumbotron}"></div>
+
+    <!-- User Registration form -->
+    <form class="form-horizontal" role="form" method="POST" action="">
+        <div class="row">
+            <div class="col-md-3"></div>
+            <div class="col-md-6">
+                <h2>Register New User</h2>
+                <hr>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-md-3 field-label-responsive">
+                <label for="name">Name</label>
+            </div>
+            <div class="col-md-6">
+                <div class="form-group">
+                    <div class="input-group mb-2 mr-sm-2 mb-sm-0">
+                        <div class="input-group-addon" style="width: 2.6rem"><i class="fa fa-user"></i></div>
+                        <input type="text" name="name" class="form-control" id="name"
+                               placeholder="John Doe" required autofocus>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="form-control-feedback">
+                            <span class="text-danger align-middle">
+                                <!-- Put name validation error messages here -->
+                            </span>
+                </div>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-md-3 field-label-responsive">
+                <label for="email">E-Mail Address</label>
+            </div>
+            <div class="col-md-6">
+                <div class="form-group">
+                    <div class="input-group mb-2 mr-sm-2 mb-sm-0">
+                        <div class="input-group-addon" style="width: 2.6rem"><i class="fa fa-at"></i></div>
+                        <input type="text" name="email" class="form-control" id="email"
+                               placeholder="you@example.com" required autofocus>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="form-control-feedback">
+                            <span class="text-danger align-middle">
+                                <!-- Put e-mail validation error messages here -->
+                            </span>
+                </div>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-md-3 field-label-responsive">
+                <label for="password">Password</label>
+            </div>
+            <div class="col-md-6">
+                <div class="form-group has-danger">
+                    <div class="input-group mb-2 mr-sm-2 mb-sm-0">
+                        <div class="input-group-addon" style="width: 2.6rem"><i class="fas fa-key"></i></div>
+                        <input type="password" name="password" class="form-control" id="password"
+                               placeholder="Password" required>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="form-control-feedback">
+                            <span class="text-danger align-middle">
+                                Example Error Message
+                            </span>
+                </div>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-md-3 field-label-responsive">
+                <label for="password">Confirm Password</label>
+            </div>
+            <div class="col-md-6">
+                <div class="form-group">
+                    <div class="input-group mb-2 mr-sm-2 mb-sm-0">
+                        <div class="input-group-addon" style="width: 2.6rem">
+                            <i class="fas fa-key"></i>
+                        </div>
+                        <input type="password" name="password-confirmation" class="form-control"
+                               id="password-confirm" placeholder="Password" required>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-md-3"></div>
+            <div class="col-md-6">
+                <button type="submit" class="btn btn-success"><i class="fa fa-user-plus"></i> Register</button>
+            </div>
+        </div>
+    </form>
+
+</body>
+</html>
+```
+
+
 
