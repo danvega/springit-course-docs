@@ -585,6 +585,13 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <li><a href="#_up_vote_down_vote">Up Vote &amp; Down Vote</a></li>
 </ul>
 </li>
+<li><a href="#_comments">Comments</a>
+<ul class="sectlevel3">
+<li><a href="#_databaseloader">DatabaseLoader</a></li>
+<li><a href="#_list_comments">List Comments</a></li>
+<li><a href="#_add_new_comment">Add New Comment</a></li>
+</ul>
+</li>
 <li><a href="#_spring_mvc_the_service_layer">Spring MVC: The Service Layer</a></li>
 </ul>
 </li>
@@ -5790,8 +5797,8 @@ Take a look at the H2 Console and look at the vote_count column!
 <div class="paragraph">
 <p>Everything is starting to look pretty good but we still have one issue. Nothing is really secure and we have an issue if we aren&#8217;t logged in and try to vote.</p>
 </div>
-<div class="sect5">
-<h6 id="_security">Security</h6>
+<div class="sect4">
+<h5 id="_security">Security</h5>
 <div class="paragraph">
 <p>The first thing we need to fix is the error that is happening when we try and vote when we aren&#8217;t logged in. In our AuditorAwareImpl we try and get the authentication object and if it isn&#8217;t null we get the user. The problem here is that in this case the authentication object isn&#8217;t null but we actually don&#8217;t have a logged in user. This is because by default there is an "anonymousUser" and we need to check for that.</p>
 </div>
@@ -5846,6 +5853,133 @@ public class SecurityConfiguration extends WebSecurityConfigurerAdapter {
 </div>
 <div class="paragraph">
 <p>And with that I think we have a pretty solid voting mechanism. We can of course improve upon it but for now I think it works pretty well.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_comments">Comments</h3>
+<div class="paragraph">
+<p>The last piece of the UI puzzle is comments. We need to be able to list comments out for each link and we want to allow logged in users to add a new comment.</p>
+</div>
+<div class="sect3">
+<h4 id="_databaseloader">DatabaseLoader</h4>
+<div class="paragraph">
+<p>We are going to add something to our <code>CommandLineRunner</code> so we can add some test data into our application.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-java" data-lang="java">links.forEach((k,v) -&gt; {
+    Link link = new Link(k,v);
+    linkRepository.save(link);
+
+    // we will do something with comments later
+    Comment spring = new Comment("Thank you for this link related to Spring Boot. I love it, great post!",link);
+    Comment security = new Comment("I love that you're talking about Spring Security",link);
+    Comment pwa = new Comment("What is this Progressive Web App thing all about? PWAs sound really cool.",link);
+    Comment comments[] = {spring,security,pwa};
+    for(Comment comment : comments) {
+        commentRepository.save(comment);
+        link.addComment(comment);
+    }
+});</code></pre>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_list_comments">List Comments</h4>
+<div class="paragraph">
+<p>Now that we have some data in our database we need to list out the comments on our link page. Remember back when we added that functionality to our Link domain to get a pretty time? Well we are going to do the same to comment.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-java" data-lang="java">public String getPrettyTime() {
+    PrettyTime pt = BeanUtil.getBean(PrettyTime.class);
+    return pt.format(convertToDateViaInstant(getCreationDate()));
+}
+
+private Date convertToDateViaInstant(LocalDateTime dateToConvert) {
+    return java.util.Date.from(dateToConvert.atZone(ZoneId.systemDefault()).toInstant());
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Update the single comment display to loop over the list of comments for this link.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-html" data-lang="html">&lt;!-- single comment --&gt;
+&lt;div class="row comment" th:each="comment : ${link.getComments()}"&gt;
+    &lt;div class="col-1"&gt;&amp;nbsp;&lt;/div&gt;
+    &lt;div class="col-11"&gt;
+        &lt;span&gt;&lt;a href="#" th:text="${comment.getCreatedBy()}"&gt;&lt;i class="far fa-user"&gt;&lt;/i&gt; therealdanvega&lt;/a&gt;&lt;/span&gt;
+        &lt;span th:text="${comment.getPrettyTime()}"&gt;&lt;i class="far fa-clock"&gt;&lt;/i&gt; 4 hours ago&lt;/span&gt;
+        &lt;p class="body" th:text="${comment.getBody()}"&gt;It’s one thing I never care about, new releases of maven. Yet I do for most other things.. I really should take a look at any features released in the last while! Pull my dependencies, run my tests and upload to nexus. I don’t care for much else, I wonder what if any I’m missing.&lt;/p&gt;
+        &lt;a href="#" class="permalink"&gt;&lt;i class="fas fa-link"&gt;&lt;/i&gt; permalink&lt;/a&gt;
+        &lt;a href="#" class="like"&gt;&lt;i class="far fa-thumbs-up"&gt;&lt;/i&gt; Like&lt;/a&gt;
+    &lt;/div&gt;
+&lt;/div&gt;</code></pre>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_add_new_comment">Add New Comment</h4>
+<div class="paragraph">
+<p>The first thing we need to do is to update our add comment form. First, from the controllers perspective we will need to load an empty comment. To do that we will need to modify our read method in our <code>LinkController</code>.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-java" data-lang="java">@GetMapping("/link/{id}")
+public String read(@PathVariable Long id,Model model) {
+    Optional&lt;Link&gt; link = linkRepository.findById(id);
+    if( link.isPresent() ) {
+        Link currentLink = link.get();
+        Comment comment = new Comment();
+        comment.setLink(currentLink);
+        model.addAttribute("comment",comment);
+        model.addAttribute("link",currentLink);
+        model.addAttribute("success", model.containsAttribute("success"));
+        return "link/view";
+    } else {
+        return "redirect:/";
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Next we will update our add form to contain a little bit more information. We need to add a form action and object. We also need to add a hidden field for the link because this isn&#8217;t something the user selects.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-html" data-lang="html">&lt;div class="row addcomment" sec:authorize="hasRole('ROLE_USER')"&gt;
+    &lt;div class="col-1"&gt;&amp;nbsp;&lt;/div&gt;
+    &lt;div class="col-11"&gt;
+        &lt;form id="frmAddLink" method="POST" th:action="@{/link/comments}" th:object="${comment}"&gt;
+            &lt;input type="hidden" th:field="*{link}"/&gt;
+            &lt;div class="form-group"&gt;
+                &lt;textarea class="form-control" id="comment" rows="3" th:field="*{body}"&gt;&lt;/textarea&gt;
+            &lt;/div&gt;
+            &lt;button type="submit" class="btn btn-primary"&gt;Add Comment&lt;/button&gt;
+        &lt;/form&gt;
+    &lt;/div&gt;
+&lt;/div&gt;</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>You might think to  create a new Comment Controller but we don&#8217;t actually have to. Comments belong to this particular link so adding a new mapping to handle the post right in our <code>LinkController</code> is just fine.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-java" data-lang="java">@PostMapping("/link/comments")
+public String addComment(@Valid Comment comment, BindingResult bindingResult, Model model, RedirectAttributes redirectAttributes) {
+    if( bindingResult.hasErrors() ) {
+        logger.info("Something went wrong.");
+    } else {
+        logger.info("New Comment Saved!");
+        commentRepository.save(comment);
+    }
+    return "redirect:/link/" + comment.getLink().getId();
+}</code></pre>
 </div>
 </div>
 </div>

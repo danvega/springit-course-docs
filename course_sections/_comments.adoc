@@ -1,0 +1,108 @@
+The last piece of the UI puzzle is comments. We need to be able to list comments out for each link and we want to allow logged in users to add a new comment. 
+
+==== DatabaseLoader
+
+We are going to add something to our `CommandLineRunner` so we can add some test data into our application. 
+
+```java
+links.forEach((k,v) -> {
+    Link link = new Link(k,v);
+    linkRepository.save(link);
+
+    // we will do something with comments later
+    Comment spring = new Comment("Thank you for this link related to Spring Boot. I love it, great post!",link);
+    Comment security = new Comment("I love that you're talking about Spring Security",link);
+    Comment pwa = new Comment("What is this Progressive Web App thing all about? PWAs sound really cool.",link);
+    Comment comments[] = {spring,security,pwa};
+    for(Comment comment : comments) {
+        commentRepository.save(comment);
+        link.addComment(comment);
+    }
+});
+```
+
+==== List Comments
+
+Now that we have some data in our database we need to list out the comments on our link page. Remember back when we added that functionality to our Link domain to get a pretty time? Well we are going to do the same to comment. 
+
+```java
+public String getPrettyTime() {
+    PrettyTime pt = BeanUtil.getBean(PrettyTime.class);
+    return pt.format(convertToDateViaInstant(getCreationDate()));
+}
+
+private Date convertToDateViaInstant(LocalDateTime dateToConvert) {
+    return java.util.Date.from(dateToConvert.atZone(ZoneId.systemDefault()).toInstant());
+}
+```
+
+Update the single comment display to loop over the list of comments for this link. 
+
+```html
+<!-- single comment -->
+<div class="row comment" th:each="comment : ${link.getComments()}">
+    <div class="col-1">&nbsp;</div>
+    <div class="col-11">
+        <span><a href="#" th:text="${comment.getCreatedBy()}"><i class="far fa-user"></i> therealdanvega</a></span>
+        <span th:text="${comment.getPrettyTime()}"><i class="far fa-clock"></i> 4 hours ago</span>
+        <p class="body" th:text="${comment.getBody()}">It’s one thing I never care about, new releases of maven. Yet I do for most other things.. I really should take a look at any features released in the last while! Pull my dependencies, run my tests and upload to nexus. I don’t care for much else, I wonder what if any I’m missing.</p>
+        <a href="#" class="permalink"><i class="fas fa-link"></i> permalink</a>
+        <a href="#" class="like"><i class="far fa-thumbs-up"></i> Like</a>
+    </div>
+</div>
+```
+
+==== Add New Comment
+
+The first thing we need to do is to update our add comment form. First, from the controllers perspective we will need to load an empty comment. To do that we will need to modify our read method in our `LinkController`.
+
+```java
+@GetMapping("/link/{id}")
+public String read(@PathVariable Long id,Model model) {
+    Optional<Link> link = linkRepository.findById(id);
+    if( link.isPresent() ) {
+        Link currentLink = link.get();
+        Comment comment = new Comment();
+        comment.setLink(currentLink);
+        model.addAttribute("comment",comment);
+        model.addAttribute("link",currentLink);
+        model.addAttribute("success", model.containsAttribute("success"));
+        return "link/view";
+    } else {
+        return "redirect:/";
+    }
+}
+```
+
+Next we will update our add form to contain a little bit more information. We need to add a form action and object. We also need to add a hidden field for the link because this isn't something the user selects. 
+
+```html
+<div class="row addcomment" sec:authorize="hasRole('ROLE_USER')">
+    <div class="col-1">&nbsp;</div>
+    <div class="col-11">
+        <form id="frmAddLink" method="POST" th:action="@{/link/comments}" th:object="${comment}">
+            <input type="hidden" th:field="*{link}"/>
+            <div class="form-group">
+                <textarea class="form-control" id="comment" rows="3" th:field="*{body}"></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary">Add Comment</button>
+        </form>
+    </div>
+</div>
+```
+
+
+You might think to  create a new Comment Controller but we don't actually have to. Comments belong to this particular link so adding a new mapping to handle the post right in our `LinkController` is just fine. 
+
+```java
+@PostMapping("/link/comments")
+public String addComment(@Valid Comment comment, BindingResult bindingResult, Model model, RedirectAttributes redirectAttributes) {
+    if( bindingResult.hasErrors() ) {
+        logger.info("Something went wrong.");
+    } else {
+        logger.info("New Comment Saved!");
+        commentRepository.save(comment);
+    }
+    return "redirect:/link/" + comment.getLink().getId();
+}
+```
