@@ -29,4 +29,4 @@ include::course_sections/_voting.adoc[]
 include::course_sections/_comments.adoc[]
 
 === Spring MVC: The Service Layer
-
+include::course_sections/_service.adoc[]

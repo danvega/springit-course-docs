@@ -1,0 +1,201 @@
+
+When we started creating our controllers I didn't spend a lot of time on what should go in there because I just wanted us to start writing code. Now that our application has taken shape I want to revisit that.
+
+Controllers are supposed to be "thin" and shouldn't contain any real business logic. The controllers job is to simply handle the request and move the user into the correct view or return the response in an API call.
+
+If that's the case then where do we put all of our business logic? The answer is of course in the service layer. As you might have already noticed there is no S in MVC but this is one of those patterns that has become standard over the years. In this section we are going to cover: 
+
+* What is a Service class and what should it contain
+* How to create a Service class
+* Creating a User Service
+* Refactoring our existing controllers
+* @Transactional What is it and why do we need it
+
+The reason we are doing this now is because in the next section we are going to revisit the registration process. There are a lof of things that happen in that process and we need a logical place for that functionality to live. 
+
+==== User Service 
+
+We are going to start off by creating a User Service in this section. Let's start to think about some of the methods that might go into our User Service. 
+
+* Register
+    * Save the new user
+    * Send Activation Email
+* Optional<User> findByInd(Long id) 
+* User save(User user)
+* Send Activation Email
+* Find User By Email & Activation Code
+
+NOTE: You will often find that your service is going to contain a lot of the methods the repository contains and that is ok, it will also contain some methods the repository doesn't.
+
+Now that we know what logic our user service might contain let's start to build out the stub for it. 
+
+```java
+public class UserService {
+
+    private final Logger logger = LoggerFactory.getLogger(UserService.class);
+    private final RoleService roleService;
+    private final UserRepository userRepository;
+
+    public UserService(RoleService roleService, UserRepository userRepository) {
+        this.roleService = roleService;
+        this.userRepository = userRepository;
+    }
+
+    public User register(User user) {
+
+    }
+
+}
+```
+
+Now how can we use our new User Service class in our Authentication Controller.
+
+```java
+@Controller
+public class AuthController {
+
+    private static final Logger logger = LoggerFactory.getLogger(AuthController.class);
+    private UserService userService;
+
+    public AuthController(UserService userService) {
+        this.userService = userService;
+    }
+
+```
+
+This doesn't work right away because we haven't asked Spring to manage this class as a bean for us. We could use the top level stereotype `@Component` but Spring provides a special one for Service classes, appropriately named `@Service`
+
+```java
+@Service
+public class UserService {
+
+}
+```
+
+==== Link Controller Refactoring
+
+In this lesson we want to move anything that uses a repository class inside of our link controller to a new Link Service class.We could leave the repositories and just add additional functionality to our service class but that is just one more thing our controller needs to know about. The plan here is to keep the controller class as thin as possible.
+
+
+==== Controller Refactoring Exercise
+
+We saw how to refactor the Link Controller and now we need to do that for the rest of our application. If you have any problems you can peek ahead to the the commits on this service branch. 
+
+* AuthController
+* VoteController
+
+==== Transactional
+
+The first question we need to answer is: What is a transaction? I think the best way to answer that question is to look at an example. 
+
+Say for instance we had a method that accepted 1 or 1000 users. Our job is to batch save a list user but if any one of them fails we shouldn't insert any. 
+
+```java
+public void saveUsers(User... users) {
+    for(User user : users) {
+        logger.info("Saving User: " + user.getFullName());
+        userRepository.save(user);
+    }
+}
+```
+
+In this scenario we can use a transaction to begin our method and then if any problems come up we can rollback the transaction or if everything went fine we can commit it. In this example if we saved 10 users and then hit a problem we would rollback the transaction and no users would be persisted to the database. Here is what the above method looks like from a high level under the hood when we enable transactions.
+
+```java
+public void saveUsers(User... users) {
+    // begin transaction
+    for(User user : users) {
+        logger.info("Saving User: " + user.getFullName());
+        try {
+            userRepository.save(user);
+        } catch(Exception e) {
+            // rollback transaction
+        }
+    }
+    // commit transaction
+}
+```
+
+If you want to enable transaction management in Spring you will need to use the https://docs.spring.io/spring-framework/docs/current/javadoc-api/org/springframework/transaction/annotation/EnableTransactionManagement.html++[@EnableTransactionManagement] annotation on a configuration class. For the purposes of this application we can simply add it to our main application class. 
+
+```java
+@SpringBootApplication
+@EnableJpaAuditing
+@EnableTransactionManagement
+public class SpringitApplication {
+
+    ...
+
+}
+```
+
+Now that we have enabled Transaction management we can use the https://docs.spring.io/spring-framework/docs/current/javadoc-api/org/springframework/transaction/annotation/Transactional.html++[@Transactional] annotation on our classes or methods. If we use the annotation at the class level all public methods within that class will be marked with `@Transactional`. 
+
+```java
+@Service
+@Transactional
+public class UserService {
+
+    // will be marked with @Transactional
+    public User register() {
+        return null;
+    }
+
+    // will NOT be marked with @Transactional
+    private void logUserRegistration() {
+        
+    }
+
+}
+```
+
+You can also mark your methods as Transactional. 
+
+```java
+@Service
+@Transactional
+public class UserService {
+
+    @Transactional
+    public User register() {
+        return null;
+    }
+
+    private void logUserRegistration() {
+        
+    }
+
+}
+```
+
+The reason you might mix and match these is because the `@Transactional` annotation has some properties that you can use to customize the transaction.
+
+* The **Isolation Level** of the transaction.
+* The **Propogation Type** of the transaction.
+* A **readOnly** flag that can be set to true if the transaction is effectively read-only, allowing for corresponding optimizations at runtime.
+* A **Timeout** for the operation to be wrapped by the transaction
+* The **Rollback** rules for the transaction.
+
+This means if I knew that all of my methods but 1 were going to be Read Only I could set that at the class level and override the 1 at the method level.
+
+```java
+@Service
+@Transactional(readOnly=true)
+public class UserService {
+
+    @Transaction(readOnly=false)
+    public User register() {
+        return null;
+    }
+
+    public User findById(Long id) {
+        return userRepository.findById(id);
+    }
+
+    public User findByEmail(String email) {
+        return userRepository.findByEmail(email);
+    }
+    ...
+}
+```
+
