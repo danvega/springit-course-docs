@@ -13,6 +13,8 @@ If that's the case then where do we put all of our business logic? The answer is
 
 The reason we are doing this now is because in the next section we are going to revisit the registration process. There are a lof of things that happen in that process and we need a logical place for that functionality to live. 
 
+IMPORTANT: CREATE NEW BRANCH CALLED service
+
 ==== User Service 
 
 We are going to start off by creating a User Service in this section. Let's start to think about some of the methods that might go into our User Service. 
@@ -199,3 +201,6 @@ public class UserService {
 }
 ```
 
+==== Merge Service Branch
+
+IMPORTANT: Merge Service Branch
